@@ -16,10 +16,11 @@
     <None Include="build\Askaiser.EphemeralMongo6.targets" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="build\" />
   </ItemGroup>
 
+  <!-- injects the version of the currently built package into the targets file -->
   <Target Name="UpdateVersionInTargets" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Release' ">
     <PropertyGroup>
       <VersionRegexPattern> Version="([^"]+)" </VersionRegexPattern>
-      <VersionRegexReplacement> Version="$(Version)" </VersionRegexReplacement>
+      <VersionRegexReplacement> Version="$(PackageVersion)" </VersionRegexReplacement>
       <CustomTargetsPath>$(MSBuildThisFileDirectory)build\Askaiser.EphemeralMongo6.targets</CustomTargetsPath>
       <CustomTargetsOldContent>$([System.IO.File]::ReadAllText('$(CustomTargetsPath)'))</CustomTargetsOldContent>
       <CustomTargetsNewContent>$([System.Text.RegularExpressions.Regex]::Replace($(CustomTargetsOldContent), '$(VersionRegexPattern)', '$(VersionRegexReplacement)'))</CustomTargetsNewContent>
