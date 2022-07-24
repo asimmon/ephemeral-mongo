@@ -20,7 +20,7 @@
   <Target Name="UpdateVersionInTargets" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Release' ">
     <PropertyGroup>
       <VersionRegexPattern> Version="([^"]+)" </VersionRegexPattern>
-      <VersionRegexReplacement> Version="$(Version)" </VersionRegexReplacement>
+      <VersionRegexReplacement> Version="$(PackageVersion)" </VersionRegexReplacement>
       <CustomTargetsPath>$(MSBuildThisFileDirectory)build\Askaiser.EphemeralMongo4.targets</CustomTargetsPath>
       <CustomTargetsOldContent>$([System.IO.File]::ReadAllText('$(CustomTargetsPath)'))</CustomTargetsOldContent>
       <CustomTargetsNewContent>$([System.Text.RegularExpressions.Regex]::Replace($(CustomTargetsOldContent), '$(VersionRegexPattern)', '$(VersionRegexReplacement)'))</CustomTargetsNewContent>

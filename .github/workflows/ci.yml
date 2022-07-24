@@ -24,8 +24,3 @@ jobs:
 
       - run: ./build.ps1 --target=push --nuget-api-key=${{ secrets.myget_api_key }} --nuget-source=${{ secrets.myget_source }}
         shell: pwsh
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: packages
-          path: ./.output/**/*
