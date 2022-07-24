@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <Description>Askaiser.EphemeralMongo6 is a wrapper around MongoDB 6 binaries built for .NET Standard 2.0.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Askaiser.EphemeralMongo.Core\Askaiser.EphemeralMongo.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
+    <None Include="build\Askaiser.EphemeralMongo6.targets" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="build\" />
+  </ItemGroup>
+
+  <Target Name="UpdateVersionInTargets" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Release' ">
+    <PropertyGroup>
+      <VersionRegexPattern> Version="([^"]+)" </VersionRegexPattern>
+      <VersionRegexReplacement> Version="$(Version)" </VersionRegexReplacement>
+      <CustomTargetsPath>$(MSBuildThisFileDirectory)build\Askaiser.EphemeralMongo6.targets</CustomTargetsPath>
+      <CustomTargetsOldContent>$([System.IO.File]::ReadAllText('$(CustomTargetsPath)'))</CustomTargetsOldContent>
+      <CustomTargetsNewContent>$([System.Text.RegularExpressions.Regex]::Replace($(CustomTargetsOldContent), '$(VersionRegexPattern)', '$(VersionRegexReplacement)'))</CustomTargetsNewContent>
+    </PropertyGroup>
+    
+    <WriteLinesToFile File="$(CustomTargetsPath)" Lines="$(CustomTargetsNewContent)" Overwrite="true" />
+  </Target>
+</Project>

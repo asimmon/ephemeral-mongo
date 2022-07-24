@@ -1,0 +1,17 @@
+[*]
+indent_style = space
+charset = utf-8
+
+[*.{csproj,yml,yaml,conf,targets}]
+indent_size = 2
+
+[Directory.Build.props]
+indent_size = 2
+
+[*.{css,scss,js,ps1}]
+indent_size = 4
+
+[*.cs]
+indent_size = 4
+tab_width = 4
+max_line_length = off

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <LangVersion>10</LangVersion>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Cake.Compression" Version="0.3.0" />
+    <PackageReference Include="Cake.Frosting" Version="2.2.0" />
+  </ItemGroup>
+</Project>

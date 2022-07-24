@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>false</ImplicitUsings>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <IsPackable>true</IsPackable>
+    <Description>TODO</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
+
+    <!-- Only package the MongoDB executable for this particular project -->
+    <None Remove="tools\**" />
+    <None Include="tools\$(AssemblyName)\**\*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="tools\mongodb\" />
+
+    <!-- Include custom targets in the package so the MongoDB executable can be copied to the output directory of projects that will consume the package -->
+    <None Include="build\mongodb.targets" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="build\$(AssemblyName).targets" />
+  </ItemGroup>
+</Project>
