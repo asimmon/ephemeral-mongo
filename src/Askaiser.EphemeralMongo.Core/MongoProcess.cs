@@ -6,58 +6,21 @@ using MongoDB.Driver.Core.Servers;
 
 namespace Askaiser.EphemeralMongo.Core;
 
-internal sealed class MongoProcess : IMongoProcess
+internal sealed class MongoProcess : BaseMongoProcess
 {
     private const string ConnectionReadySentence = "waiting for connections";
     private const string ReplicaSetReadySentence = "transition to primary complete; database writes are now permitted";
 
-    private readonly MongoRunnerOptions _options;
-    private readonly Process _process;
-
     public MongoProcess(MongoRunnerOptions options)
+        : base(options, options.MongoExecutablePath, options.MongoArguments)
     {
-        this._options = options;
-
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = options.MongoExecutablePath,
-            Arguments = options.MongoArguments,
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-
-        this._process = new Process
-        {
-            StartInfo = processStartInfo,
-        };
-
-        this._process.OutputDataReceived += this.OnOutputDataReceivedForLogging;
-        this._process.ErrorDataReceived += this.OnErrorDataReceivedForLogging;
     }
 
-    private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
-    {
-        if (this._options.StandardOuputLogger != null && args.Data != null)
-        {
-            this._options.StandardOuputLogger(args.Data);
-        }
-    }
-
-    private void OnErrorDataReceivedForLogging(object sender, DataReceivedEventArgs args)
-    {
-        if (this._options.StandardErrorLogger != null && args.Data != null)
-        {
-            this._options.StandardErrorLogger(args.Data);
-        }
-    }
-
-    public void Start()
+    public override void Start()
     {
         this.StartAndWaitForConnectionReadiness();
 
-        if (this._options.UseSingleNodeReplicaSet)
+        if (this.Options.UseSingleNodeReplicaSet)
         {
             this.ConfigureAndWaitForReplicaSetReadiness();
         }
@@ -76,30 +39,30 @@ internal sealed class MongoProcess : IMongoProcess
             }
         }
 
-        this._process.OutputDataReceived += OnOutputDataReceivedForConnectionReadiness;
+        this.Process.OutputDataReceived += OnOutputDataReceivedForConnectionReadiness;
 
         try
         {
-            this._process.Start();
+            this.Process.Start();
 
-            this._process.BeginOutputReadLine();
-            this._process.BeginErrorReadLine();
+            this.Process.BeginOutputReadLine();
+            this.Process.BeginErrorReadLine();
 
-            var isReadyToAcceptConnections = isReadyToAcceptConnectionsMre.Wait(this._options.ConnectionTimeout);
+            var isReadyToAcceptConnections = isReadyToAcceptConnectionsMre.Wait(this.Options.ConnectionTimeout);
             if (!isReadyToAcceptConnections)
             {
                 var timeoutMessage = string.Format(
                     CultureInfo.InvariantCulture,
                     "MongoDB connection availability took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
-                    this._options.ConnectionTimeout.TotalSeconds,
-                    nameof(this._options.ConnectionTimeout));
+                    this.Options.ConnectionTimeout.TotalSeconds,
+                    nameof(this.Options.ConnectionTimeout));
 
                 throw new TimeoutException(timeoutMessage);
             }
         }
         finally
         {
-            this._process.OutputDataReceived -= OnOutputDataReceivedForConnectionReadiness;
+            this.Process.OutputDataReceived -= OnOutputDataReceivedForConnectionReadiness;
         }
     }
 
@@ -116,81 +79,57 @@ internal sealed class MongoProcess : IMongoProcess
             }
         }
 
-        this._process.OutputDataReceived += OnOutputDataReceivedForReplicaSetReadiness;
+        this.Process.OutputDataReceived += OnOutputDataReceivedForReplicaSetReadiness;
 
         try
         {
-            var connectionString = string.Format(CultureInfo.InvariantCulture, "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}", this._options.MongoPort, this._options.ReplicaSetName);
+            var connectionString = string.Format(CultureInfo.InvariantCulture, "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}", this.Options.MongoPort, this.Options.ReplicaSetName);
 
             var client = new MongoClient(connectionString);
             var admin = client.GetDatabase("admin");
 
             var replConfig = new BsonDocument(new List<BsonElement>
             {
-                new BsonElement("_id", this._options.ReplicaSetName),
+                new BsonElement("_id", this.Options.ReplicaSetName),
                 new BsonElement("members", new BsonArray
                 {
-                    new BsonDocument { { "_id", 0 }, { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", this._options.MongoPort) } },
+                    new BsonDocument { { "_id", 0 }, { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", this.Options.MongoPort) } },
                 }),
             });
 
             var command = new BsonDocument("replSetInitiate", replConfig);
             admin.RunCommand<BsonDocument>(command);
 
-            var isReplicaSetReady = isReplicaSetReadyMre.Wait(this._options.ReplicaSetSetupTimeout);
+            var isReplicaSetReady = isReplicaSetReadyMre.Wait(this.Options.ReplicaSetSetupTimeout);
             if (!isReplicaSetReady)
             {
                 var timeoutMessage = string.Format(
                     CultureInfo.InvariantCulture,
                     "Replica set initialization took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
-                    this._options.ReplicaSetSetupTimeout.TotalSeconds,
-                    nameof(this._options.ReplicaSetSetupTimeout));
+                    this.Options.ReplicaSetSetupTimeout.TotalSeconds,
+                    nameof(this.Options.ReplicaSetSetupTimeout));
 
                 throw new TimeoutException(timeoutMessage);
             }
 
             var isTransactionReady = SpinWait.SpinUntil(
                 () => client.Cluster.Description.Servers.Any(x => x.State == ServerState.Connected && x.IsDataBearing),
-                this._options.ReplicaSetSetupTimeout);
+                this.Options.ReplicaSetSetupTimeout);
 
             if (!isTransactionReady)
             {
                 var timeoutMessage = string.Format(
                     CultureInfo.InvariantCulture,
                     "Cluster readiness for transactions took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
-                    this._options.ReplicaSetSetupTimeout.TotalSeconds,
-                    nameof(this._options.ReplicaSetSetupTimeout));
+                    this.Options.ReplicaSetSetupTimeout.TotalSeconds,
+                    nameof(this.Options.ReplicaSetSetupTimeout));
 
                 throw new TimeoutException(timeoutMessage);
             }
         }
         finally
         {
-            this._process.OutputDataReceived -= OnOutputDataReceivedForReplicaSetReadiness;
+            this.Process.OutputDataReceived -= OnOutputDataReceivedForReplicaSetReadiness;
         }
-    }
-
-    public void Dispose()
-    {
-        this._process.OutputDataReceived -= this.OnOutputDataReceivedForLogging;
-        this._process.ErrorDataReceived -= this.OnErrorDataReceivedForLogging;
-
-        this._process.CancelOutputRead();
-        this._process.CancelErrorRead();
-
-        if (!this._process.HasExited)
-        {
-            try
-            {
-                this._process.Kill();
-                this._process.WaitForExit();
-            }
-            catch
-            {
-                // ignored, we did our best to stop the process
-            }
-        }
-
-        this._process.Dispose();
     }
 }
