@@ -36,19 +36,32 @@ public class MongoRunnerTests : BaseIntegrationTest
             using (var runner = MongoRunner.Run(options))
             {
                 var database = new MongoClient(runner.ConnectionString).GetDatabase(databaseName);
+
+                // Verify that the collection is empty
+                var personBeforeImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault();
+                Assert.Null(personBeforeImport);
+
+                // Add a document
                 database.GetCollection<Person>(collectionName).InsertOne(new Person(originalPerson.Id, originalPerson.Name));
                 runner.Export(databaseName, collectionName, exportedFilePath);
+
+                // Verify that the document was inserted successfully
+                var personAfterImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault();
+                Assert.Equal(originalPerson, personAfterImport);
             }
 
             using (var runner = MongoRunner.Run(options))
             {
                 var database = new MongoClient(runner.ConnectionString).GetDatabase(databaseName);
 
+                // Verify that the collection is empty
                 var personBeforeImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault();
                 Assert.Null(personBeforeImport);
 
+                // Import the exported collection
                 runner.Import(databaseName, collectionName, exportedFilePath);
 
+                // Verify that the document was imported successfully
                 var personAfterImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault();
                 Assert.Equal(originalPerson, personAfterImport);
             }
