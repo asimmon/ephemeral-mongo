@@ -2,11 +2,13 @@
 #pragma warning disable SA1649
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Net;
@@ -103,7 +105,7 @@ public sealed class GitVersionTask : FrostingTask<BuildContext>
 [TaskName("DownloadMongo")]
 [IsDependentOn(typeof(CleanTask))]
 [IsDependentOn(typeof(GitVersionTask))]
-public sealed class DownloadMongoTask : FrostingTask<BuildContext>
+public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
 {
     private static readonly ProjectInfo[] Projects =
     {
@@ -123,99 +125,198 @@ public sealed class DownloadMongoTask : FrostingTask<BuildContext>
         new ProjectInfo("Askaiser.EphemeralMongo4.ubuntu1804-x86-x64", "ubuntu1804", "x86_64", "targeted", "4"),
     };
 
-    public override void Run(BuildContext context)
+    public override async Task RunAsync(BuildContext context)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var project in Projects)
+        {
+            tasks.Add(Task.Run(() => RunProject(context, project)));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    private static void RunProject(BuildContext context, ProjectInfo project)
+    {
+        var mongoVersions = GetMongoVersions(context);
+        var toolsVersions = GetToolsVersions(context);
+
+        // Find MongoDB for the current project
+        var mongoVersion = mongoVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(project.Version))
+            ?? throw new InvalidOperationException("Could not find production release for MongoDB " + project.Version);
+
+        var mongoDownload = mongoVersion.Downloads.SingleOrDefault(x => x.Architecture == project.Architecture && x.Edition == project.Edition && x.Target == project.Target)
+            ?? throw new InvalidOperationException("Could not find MongoDB " + project.Architecture + ", " + project.Edition + ", " + project.Target);
+
+        // Find MongoDB tools for the current project
+        var toolsVersion = toolsVersions.Versions.FirstOrDefault()
+            ?? throw new InvalidOperationException("Could not find MongoDB tools");
+
+        var toolsDownload = toolsVersion.Downloads.SingleOrDefault(x => x.Architecture == project.Architecture && x.Name == project.Target)
+            ?? throw new InvalidOperationException("Could not find MongoDB tools " + project.Architecture + ", " + project.Target);
+
+        // Download MongoDB
+        context.Log.Information("Downloading MongoDB {0}", mongoDownload.Archive.Url);
+        var mongoArchiveFilePath = context.DownloadFile(mongoDownload.Archive.Url);
+        using var tmp1 = new DisposableFile(mongoArchiveFilePath.FullPath);
+        context.Log.Information("MongoDB downloaded to {0}", mongoArchiveFilePath.FullPath);
+
+        // Download MongoDB tools
+        context.Log.Information("Downloading MongoDB tools {0}", toolsDownload.Archive.Url);
+        var toolsArchiveFilePath = context.DownloadFile(toolsDownload.Archive.Url);
+        using var tmp2 = new DisposableFile(toolsArchiveFilePath.FullPath);
+        context.Log.Information("MongoDB tools downloaded to {0}", toolsArchiveFilePath.FullPath);
+
+        // Verify SHA256 hash
+        EnsureHashMatch(context, mongoArchiveFilePath.FullPath, mongoDownload.Archive.Sha256);
+        EnsureHashMatch(context, toolsArchiveFilePath.FullPath, toolsDownload.Archive.Sha256);
+
+        // Uncompress archive
+        var projectDir = Directory.CreateDirectory(Path.Combine(Constants.RuntimesToolsPath, project.Name));
+        var binDir = Directory.CreateDirectory(Path.Combine(projectDir.FullName, "bin"));
+        var mongoUncompressDir = Directory.CreateDirectory(Path.Combine(projectDir.FullName, "community-server"));
+        var toolsUncompressDir = Directory.CreateDirectory(Path.Combine(projectDir.FullName, "database-tools"));
+
+        Uncompress(context, mongoDownload.Archive.Url, mongoArchiveFilePath.FullPath, mongoUncompressDir.FullName);
+        Uncompress(context, toolsDownload.Archive.Url, toolsArchiveFilePath.FullPath, toolsUncompressDir.FullName);
+
+        // Find mongod executable
+        var mongoExecutable = context.Globber.GetFiles(Path.Combine(mongoUncompressDir.FullName, "*", "bin", project.MongoExecutableFileName)).FirstOrDefault()
+            ?? throw new InvalidOperationException("Could not find MongoDB executable in " + mongoUncompressDir.FullName);
+
+        // Find mongoimport
+        var mongoImportExecutable = context.Globber.GetFiles(Path.Combine(toolsUncompressDir.FullName, "*", "bin", project.MongoImportExecutableFileName)).FirstOrDefault()
+            ?? throw new InvalidOperationException("Could not find MongoDB import tool executable in " + toolsUncompressDir.FullName);
+
+        // Find mongoexport
+        var mongoExportExecutable = context.Globber.GetFiles(Path.Combine(toolsUncompressDir.FullName, "*", "bin", project.MongoExportExecutableFileName)).FirstOrDefault()
+            ?? throw new InvalidOperationException("Could not find MongoDB export tool executable in " + toolsUncompressDir.FullName);
+
+        // Prepare their new paths
+        var newMongoExecutablePath = Path.Combine(binDir.FullName, project.MongoExecutableFileName);
+        var newMongoImportExecutablePath = Path.Combine(binDir.FullName, project.MongoImportExecutableFileName);
+        var newMongoExportExecutablePath = Path.Combine(binDir.FullName, project.MongoExportExecutableFileName);
+
+        // Find miscellaneous files such as LICENSE, README, THIRD-PARTY-NOTICES, ...
+        var mongoMiscFiles = context.Globber.GetFiles(Path.Combine(mongoUncompressDir.FullName, "*", "*")).ToList();
+        var toolsMiscFiles = context.Globber.GetFiles(Path.Combine(toolsUncompressDir.FullName, "*", "*")).ToList();
+
+        // Copy mongod executable with its associated license and README file together to the upper directory, delete any remaining file and directory
+        context.Log.Information("Moving MongoDB {0} to {1}", mongoExecutable.FullPath, newMongoExecutablePath);
+        File.Move(mongoExecutable.FullPath, newMongoExecutablePath);
+
+        context.Log.Information("Moving MongoDB import {0} to {1}", mongoImportExecutable.FullPath, newMongoImportExecutablePath);
+        File.Move(mongoImportExecutable.FullPath, newMongoImportExecutablePath);
+
+        context.Log.Information("Moving MongoDB export {0} to {1}", mongoExportExecutable.FullPath, newMongoExportExecutablePath);
+        File.Move(mongoExportExecutable.FullPath, newMongoExportExecutablePath);
+
+        foreach (var mongoMiscFile in mongoMiscFiles)
+        {
+            var newMongoMiscFilePath = Path.Combine(mongoUncompressDir.FullName, mongoMiscFile.GetFilename().ToString());
+            context.Log.Information("Moving misc file {0} to {1}", mongoMiscFile.FullPath, newMongoMiscFilePath);
+            File.Move(mongoMiscFile.FullPath, newMongoMiscFilePath);
+        }
+
+        foreach (var toolsMiscFile in toolsMiscFiles)
+        {
+            var newToolsMiscFilePath = Path.Combine(toolsUncompressDir.FullName, toolsMiscFile.GetFilename().ToString());
+            context.Log.Information("Moving misc file {0} to {1}", toolsMiscFile.FullPath, newToolsMiscFilePath);
+            File.Move(toolsMiscFile.FullPath, newToolsMiscFilePath);
+        }
+
+        Directory.Delete(mongoExecutable.GetDirectory().GetParent().FullPath, recursive: true);
+        Directory.Delete(mongoImportExecutable.GetDirectory().GetParent().FullPath, recursive: true);
+    }
+
+    private static MongoVersionsDto GetMongoVersions(BuildContext context)
     {
         // Parse JSON file containing all versions and OS-specific download URLs
         const string currentJsonUrl = "https://s3.amazonaws.com/downloads.mongodb.org/current.json";
         var jsonFilePath = context.DownloadFile(currentJsonUrl);
 
-        MongoVersionsDto currentJson;
-
         try
         {
             var currentJsonRaw = File.ReadAllText(jsonFilePath.FullPath);
-            currentJson = JsonSerializer.Deserialize<MongoVersionsDto>(currentJsonRaw) ?? throw new Exception("An error occured while parsing " + currentJsonUrl);
+            return JsonSerializer.Deserialize<MongoVersionsDto>(currentJsonRaw) ?? throw new Exception("An error occured while parsing " + currentJsonUrl);
         }
         finally
         {
             File.Delete(jsonFilePath.FullPath);
         }
+    }
 
-        foreach (var project in Projects)
+    private static ToolsVersionsDto GetToolsVersions(BuildContext context)
+    {
+        // Parse JSON file containing all versions and OS-specific download URLs
+        const string currentJsonUrl = "https://s3.amazonaws.com/downloads.mongodb.org/tools/db/release.json";
+        var jsonFilePath = context.DownloadFile(currentJsonUrl);
+
+        try
         {
-            // Find and download mongoDB for the current project
-            var version = currentJson.Versions.First(x => x.ProductionRelease && x.Version.StartsWith(project.Version));
-            var download = version.Downloads.Single(x => x.Architecture == project.Architecture && x.Edition == project.Edition && x.Target == project.Target);
+            var currentJsonRaw = File.ReadAllText(jsonFilePath.FullPath);
+            return JsonSerializer.Deserialize<ToolsVersionsDto>(currentJsonRaw) ?? throw new Exception("An error occured while parsing " + currentJsonUrl);
+        }
+        finally
+        {
+            File.Delete(jsonFilePath.FullPath);
+        }
+    }
 
-            context.Log.Information("Downloading {0}", download.Archive.Url);
-            var archiveFilePath = context.DownloadFile(download.Archive.Url);
-            context.Log.Information("Archive downloaded to {0}", archiveFilePath.FullPath);
+    private static void EnsureHashMatch(BuildContext context, string filePath, string expectedHexHash)
+    {
+        // Verify SHA256 hash
+        context.Log.Information("Verifying SHA256 hash of " + filePath + "...");
+        using (var archiveFileHasher = SHA256.Create())
+        using (var archiveFileStream = File.OpenRead(filePath))
+        {
+            var hashBytes = archiveFileHasher.ComputeHash(archiveFileStream);
+            var hashStr = Convert.ToHexString(hashBytes);
 
+            if (!hashStr.Equals(expectedHexHash, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("An error occured during download, hashes don't match for " + filePath);
+            }
+        }
+    }
+
+    private static void Uncompress(BuildContext context, string archiveUrl, string archiveFilePath, string uncompressDir)
+    {
+        context.Log.Information("Uncompressing to {0}", uncompressDir);
+
+        if (archiveUrl.EndsWith(".zip"))
+        {
+            context.ZipUncompress(archiveFilePath, uncompressDir);
+        }
+        else if (archiveUrl.EndsWith(".tgz"))
+        {
+            context.GZipUncompress(archiveFilePath, uncompressDir);
+        }
+        else
+        {
+            throw new InvalidOperationException("Unexpected file format for " + archiveUrl);
+        }
+    }
+
+    private sealed class DisposableFile : IDisposable
+    {
+        private readonly string _filePath;
+
+        public DisposableFile(string filePath)
+        {
+            this._filePath = filePath;
+        }
+
+        public void Dispose()
+        {
             try
             {
-                // Verify SHA256 hash
-                context.Log.Information("Verifying SHA256 hash...");
-                using (var archiveFileHasher = SHA256.Create())
-                using (var archiveFileStream = File.OpenRead(archiveFilePath.FullPath))
-                {
-                    var hashBytes = archiveFileHasher.ComputeHash(archiveFileStream);
-                    var hashStr = Convert.ToHexString(hashBytes);
-
-                    if (!hashStr.Equals(download.Archive.Sha256, StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new InvalidOperationException("An error occured during download, hashes don't match for " + download.Archive.Url);
-                    }
-                }
-
-                // Uncompress archive
-                var uncompressDir = DirectoryPath.FromString(Path.Combine(Constants.RuntimesToolsPath, project.Name));
-                context.Log.Information("Uncompressing to {0}", uncompressDir.FullPath);
-
-                if (download.Archive.Url.EndsWith(".zip"))
-                {
-                    context.ZipUncompress(archiveFilePath, uncompressDir);
-                }
-                else if (download.Archive.Url.EndsWith(".tgz"))
-                {
-                    context.GZipUncompress(archiveFilePath, uncompressDir);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Unexpected file format for " + download.Archive.Url);
-                }
-
-                // Find mongod executable
-                var mongoExecutable = context.Globber.GetFiles(Path.Combine(uncompressDir.FullPath, "*", "bin", project.MongoExecutableFileName)).FirstOrDefault();
-                if (mongoExecutable == null)
-                {
-                    throw new InvalidOperationException("Could not find mongod executable in " + uncompressDir.FullPath);
-                }
-
-                var newMongoExecutablePath = Path.Combine(uncompressDir.FullPath, project.MongoExecutableFileName);
-
-                // Find miscellaneous files such as LICENSE, README, THIRD-PARTY-NOTICES, ...
-                var miscFiles = context.Globber.GetFiles(Path.Combine(uncompressDir.FullPath, "*", "*")).ToList();
-                if (!miscFiles.Any(x => x.FullPath.Contains("README")))
-                {
-                    throw new InvalidOperationException("Could not find README and license files");
-                }
-
-                // Copy mongod executable with its associated license and README file together to the upper directory, delete any remaining file and directory
-                context.Log.Information("Moving {0} to {1}", mongoExecutable.FullPath, newMongoExecutablePath);
-                File.Move(mongoExecutable.FullPath, newMongoExecutablePath);
-
-                foreach (var miscFile in miscFiles)
-                {
-                    var newMiscFilePath = Path.Combine(uncompressDir.FullPath, miscFile.GetFilename().ToString());
-                    context.Log.Information("Moving {0} to {1}", miscFile.FullPath, newMiscFilePath);
-                    File.Move(miscFile.FullPath, newMiscFilePath);
-                }
-
-                Directory.Delete(mongoExecutable.GetDirectory().GetParent().FullPath, recursive: true);
+                File.Delete(this._filePath);
             }
-            finally
+            catch
             {
-                File.Delete(archiveFilePath.FullPath);
+                // ignored
             }
         }
     }
@@ -242,6 +343,45 @@ public sealed class DownloadMongoTask : FrostingTask<BuildContext>
         public string Version { get; }
 
         public string MongoExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongod.exe" : "mongod";
+
+        public string MongoImportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoimport.exe" : "mongoimport";
+
+        public string MongoExportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoexport.exe" : "mongoexport";
+    }
+
+    private sealed class ToolsVersionsDto
+    {
+        [JsonPropertyName("versions")]
+        public ToolsVersionDto[] Versions { get; set; } = Array.Empty<ToolsVersionDto>();
+    }
+
+    private sealed class ToolsVersionDto
+    {
+        [JsonPropertyName("downloads")]
+        public ToolsDownloadDto[] Downloads { get; set; } = Array.Empty<ToolsDownloadDto>();
+    }
+
+    private sealed class ToolsDownloadDto
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("arch")]
+        public string Architecture { get; set; } = string.Empty;
+
+        [JsonPropertyName("archive")]
+        public ToolsArchiveDto Archive { get; set; } = ToolsArchiveDto.Empty;
+    }
+
+    private sealed class ToolsArchiveDto
+    {
+        public static readonly ToolsArchiveDto Empty = new ToolsArchiveDto();
+
+        [JsonPropertyName("url")]
+        public string Url { get; set; } = string.Empty;
+
+        [JsonPropertyName("sha256")]
+        public string Sha256 { get; set; } = string.Empty;
     }
 
     private sealed class MongoVersionsDto
@@ -323,7 +463,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
 }
 
 [TaskName("Default")]
-[IsDependentOn(typeof(PackTask))]
+[IsDependentOn(typeof(DownloadMongoTask))]
 public sealed class DefaultTask : FrostingTask
 {
 }

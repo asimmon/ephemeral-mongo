@@ -41,7 +41,7 @@ public sealed class MongoRunner : IDisposable
         this._fileSystem.DeleteFile(lockFilePath);
 
         // Find MongoDB and make it executable
-        options.MongoExecutablePath = this._executableLocator.FindMongoExecutablePath(options.MongoDirectory) ?? throw new InvalidOperationException("Could not find MongoDB executable");
+        options.MongoExecutablePath = this._executableLocator.FindMongoExecutablePath() ?? throw new InvalidOperationException("Could not find MongoDB executable");
         this._fileSystem.MakeFileExecutable(options.MongoExecutablePath);
 
         options.MongoPort = this._portFactory.GetRandomAvailablePort();
@@ -50,6 +50,7 @@ public sealed class MongoRunner : IDisposable
         options.MongoArguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, options.MongoPort);
         options.MongoArguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
         options.MongoArguments += options.UseSingleNodeReplicaSet ? " --replSet " + options.ReplicaSetName : string.Empty;
+        options.MongoArguments += options.AdditionalArguments == null ? string.Empty : " " + options.AdditionalArguments;
 
         this._process = this._processFactory.Create(options);
         this._process.Start();

@@ -3,7 +3,6 @@
 public sealed class MongoRunnerOptions
 {
     private readonly string? _dataDirectory;
-    private readonly string? _mongoDirectory;
     private readonly TimeSpan _connectionTimeout = TimeSpan.FromSeconds(30);
     private readonly TimeSpan _replicaSetSetupTimeout = TimeSpan.FromSeconds(10);
 
@@ -13,11 +12,7 @@ public sealed class MongoRunnerOptions
         init => this._dataDirectory = CheckPathFormat(value) is { } ex ? throw new ArgumentException(nameof(this.DataDirectory), ex) : value;
     }
 
-    public string? MongoDirectory
-    {
-        get => this._mongoDirectory;
-        init => this._mongoDirectory = CheckPathFormat(value) is { } ex ? throw new ArgumentException(nameof(this.MongoDirectory), ex) : value;
-    }
+    public string? AdditionalArguments { get; init; }
 
     public TimeSpan ConnectionTimeout
     {

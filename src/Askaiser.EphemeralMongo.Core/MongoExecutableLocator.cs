@@ -4,21 +4,10 @@ namespace Askaiser.EphemeralMongo.Core;
 
 internal sealed class MongoExecutableLocator : IMongoExecutableLocator
 {
-    public string? FindMongoExecutablePath(string? userDefinedMongoDirectory)
+    public string? FindMongoExecutablePath()
     {
         var mongoExecutableFileName = GetMongoExecutableFileName();
-
-        var potentialMongoExecutablePaths = new List<FileInfo>();
-
-        if (userDefinedMongoDirectory != null)
-        {
-            potentialMongoExecutablePaths.Add(new FileInfo(Path.Combine(userDefinedMongoDirectory, mongoExecutableFileName)));
-        }
-        else
-        {
-            potentialMongoExecutablePaths.AddRange(GetPotentialMongoExecutablePaths(mongoExecutableFileName));
-        }
-
+        var potentialMongoExecutablePaths = GetPotentialMongoExecutablePaths(mongoExecutableFileName);
         return potentialMongoExecutablePaths.Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
     }
 
@@ -45,7 +34,7 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
     // https://stackoverflow.com/questions/52797/how-do-i-get-the-path-of-the-assembly-the-code-is-in
     private static IEnumerable<FileInfo> GetPotentialMongoExecutablePaths(string mongoExecutableFileName)
     {
-        var relativeMongodPath = Path.Combine("tools", "mongodb", mongoExecutableFileName);
+        var relativeMongodPath = Path.Combine("tools", "mongodb", "bin", mongoExecutableFileName);
 
         yield return new FileInfo(Path.Combine(AppContext.BaseDirectory, relativeMongodPath));
 
