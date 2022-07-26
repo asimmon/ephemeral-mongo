@@ -52,6 +52,9 @@ internal sealed class MongoImportExportProcess : IMongoProcess
 
         this._process.BeginOutputReadLine();
         this._process.BeginErrorReadLine();
+
+        // Wait for the end of import or export
+        this._process.WaitForExit();
     }
 
     public void Dispose()

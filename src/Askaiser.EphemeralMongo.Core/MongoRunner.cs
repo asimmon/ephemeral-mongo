@@ -15,7 +15,6 @@ public sealed class MongoRunner : IDisposable
 
     private IMongoProcess? _process;
     private string? _dataDirectory;
-    private int _port;
 
     private MongoRunner(IFileSystem fileSystem, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions options)
     {
@@ -46,7 +45,7 @@ public sealed class MongoRunner : IDisposable
         this._options.MongoExecutablePath = this._executableLocator.FindMongoExecutablePath() ?? throw new InvalidOperationException("Could not find MongoDB executable");
         this._fileSystem.MakeFileExecutable(this._options.MongoExecutablePath);
 
-        this._options.MongoPort = this._port = this._portFactory.GetRandomAvailablePort();
+        this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
 
         // Build MongoDB executable arguments
         this._options.MongoArguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, this._options.MongoPort);
@@ -124,8 +123,8 @@ public sealed class MongoRunner : IDisposable
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
-                @"--host 127.0.0.1 --port {0} --db {1} --collection {2} --file ""{3}"" {4} {5}",
-                this._runner._port, database, collection, inputFilePath, drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
+                @"--uri=""{0}"" --db={1} --collection={2} --file=""{3}"" {4} {5}",
+                this.ConnectionString, database, collection, inputFilePath, drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoImportExportProcess(this._runner._options, mongoImportFilePath, arguments))
             {
@@ -146,8 +145,8 @@ public sealed class MongoRunner : IDisposable
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
-                @"--host 127.0.0.1 --port {0} --db {1} --collection {2} --out ""{3}"" {4}",
-                this._runner._port, database, collection, outputFilePath, additionalArguments ?? string.Empty);
+                @"--uri=""{0}"" --db={1} --collection={2} --out=""{3}"" {4}",
+                this.ConnectionString, database, collection, outputFilePath, additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoImportExportProcess(this._runner._options, mongoExportFilePath, arguments))
             {
