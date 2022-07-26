@@ -2,5 +2,7 @@
 
 internal interface IMongoProcessFactory
 {
-    IMongoProcess Create(MongoRunnerOptions options);
+    IMongoProcess CreateMongoProcess(MongoRunnerOptions options);
+
+    IMongoProcess CreateMongoImportExportProcess(MongoRunnerOptions options, string executablePath, string arguments);
 }

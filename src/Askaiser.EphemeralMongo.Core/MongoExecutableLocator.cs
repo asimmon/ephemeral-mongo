@@ -4,32 +4,44 @@ namespace Askaiser.EphemeralMongo.Core;
 
 internal sealed class MongoExecutableLocator : IMongoExecutableLocator
 {
-    public string? FindMongoExecutablePath()
+    private static readonly Dictionary<OSPlatform, string> MongoExecutableFileNameMappings = new Dictionary<OSPlatform, string>
     {
-        var mongoExecutableFileName = GetMongoExecutableFileName();
-        var potentialMongoExecutablePaths = GetPotentialMongoExecutablePaths(mongoExecutableFileName);
-        return potentialMongoExecutablePaths.Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
-    }
+        [OSPlatform.Windows] = "mongod.exe",
+        [OSPlatform.Linux] = "mongod",
+        [OSPlatform.OSX] = "mongod",
+    };
 
-    private static string GetMongoExecutableFileName()
+    private static readonly Dictionary<OSPlatform, string> MongoImportExecutableFileNameMappings = new Dictionary<OSPlatform, string>
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return "mongod.exe";
-        }
+        [OSPlatform.Windows] = "mongoimport.exe",
+        [OSPlatform.Linux] = "mongoimport",
+        [OSPlatform.OSX] = "mongoimport",
+    };
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return "mongod";
-        }
+    private static readonly Dictionary<OSPlatform, string> MongoExportExecutableFileNameMappings = new Dictionary<OSPlatform, string>
+    {
+        [OSPlatform.Windows] = "mongoexport.exe",
+        [OSPlatform.Linux] = "mongoexport",
+        [OSPlatform.OSX] = "mongoexport",
+    };
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return "mongod";
-        }
+    public string? FindMongoExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
 
-        throw new NotSupportedException("Current operating system is not supported");
-    }
+    public string? FindMongoImportExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoImportExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
+
+    public string? FindMongoExportExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoExportExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
+
+    private static string GetMongoExecutableFileName() =>
+        MongoExecutableFileNameMappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
+        ?? throw new NotSupportedException("Current operating system is not supported");
+
+    private static string GetMongoImportExecutableFileName() =>
+        MongoImportExecutableFileNameMappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
+        ?? throw new NotSupportedException("Current operating system is not supported");
+
+    private static string GetMongoExportExecutableFileName() =>
+        MongoExportExecutableFileNameMappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
+        ?? throw new NotSupportedException("Current operating system is not supported");
 
     // https://stackoverflow.com/questions/52797/how-do-i-get-the-path-of-the-assembly-the-code-is-in
     private static IEnumerable<FileInfo> GetPotentialMongoExecutablePaths(string mongoExecutableFileName)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -10,30 +11,31 @@ public sealed class MongoRunner : IDisposable
     private readonly IPortFactory _portFactory;
     private readonly IMongoExecutableLocator _executableLocator;
     private readonly IMongoProcessFactory _processFactory;
+    private readonly MongoRunnerOptions _options;
 
     private IMongoProcess? _process;
     private string? _dataDirectory;
+    private int _port;
 
-    private MongoRunner(IFileSystem fileSystem, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory)
+    private MongoRunner(IFileSystem fileSystem, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions options)
     {
         this._fileSystem = fileSystem;
         this._portFactory = portFactory;
         this._executableLocator = executableLocator;
         this._processFactory = processFactory;
+        this._options = options;
     }
 
     public static IMongoRunner Run(MongoRunnerOptions? options = null)
     {
-        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory());
-        return runner.RunInternal(options);
+        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), options ?? new MongoRunnerOptions());
+        return runner.RunInternal();
     }
 
-    private IMongoRunner RunInternal(MongoRunnerOptions? options = null)
+    private IMongoRunner RunInternal()
     {
-        options ??= new MongoRunnerOptions();
-
         // Ensure data directory exists and has no existing MongoDB lock file
-        this._dataDirectory = options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        this._dataDirectory = this._options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         this._fileSystem.CreateDirectory(this._dataDirectory);
 
         // https://stackoverflow.com/a/6857973/825695
@@ -41,24 +43,24 @@ public sealed class MongoRunner : IDisposable
         this._fileSystem.DeleteFile(lockFilePath);
 
         // Find MongoDB and make it executable
-        options.MongoExecutablePath = this._executableLocator.FindMongoExecutablePath() ?? throw new InvalidOperationException("Could not find MongoDB executable");
-        this._fileSystem.MakeFileExecutable(options.MongoExecutablePath);
+        this._options.MongoExecutablePath = this._executableLocator.FindMongoExecutablePath() ?? throw new InvalidOperationException("Could not find MongoDB executable");
+        this._fileSystem.MakeFileExecutable(this._options.MongoExecutablePath);
 
-        options.MongoPort = this._portFactory.GetRandomAvailablePort();
+        this._options.MongoPort = this._port = this._portFactory.GetRandomAvailablePort();
 
         // Build MongoDB executable arguments
-        options.MongoArguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, options.MongoPort);
-        options.MongoArguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
-        options.MongoArguments += options.UseSingleNodeReplicaSet ? " --replSet " + options.ReplicaSetName : string.Empty;
-        options.MongoArguments += options.AdditionalArguments == null ? string.Empty : " " + options.AdditionalArguments;
+        this._options.MongoArguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, this._options.MongoPort);
+        this._options.MongoArguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
+        this._options.MongoArguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
+        this._options.MongoArguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
 
-        this._process = this._processFactory.Create(options);
+        this._process = this._processFactory.CreateMongoProcess(this._options);
         this._process.Start();
 
-        var connectionStringFormat = options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
-        var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, options.MongoPort, options.ReplicaSetName);
+        var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
+        var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
 
-        return new MongoRunnerDisposer(this, connectionString);
+        return new StartedMongoRunner(this, connectionString);
     }
 
     public void Dispose()
@@ -96,18 +98,62 @@ public sealed class MongoRunner : IDisposable
         }
     }
 
-    private sealed class MongoRunnerDisposer : IMongoRunner
+    private sealed class StartedMongoRunner : IMongoRunner
     {
         private readonly MongoRunner _runner;
         private int _isDisposed;
 
-        public MongoRunnerDisposer(MongoRunner runner, string connectionString)
+        public StartedMongoRunner(MongoRunner runner, string connectionString)
         {
             this._runner = runner;
             this.ConnectionString = connectionString;
         }
 
         public string ConnectionString { get; }
+
+        [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
+        public void Import(string database, string collection, string inputFilePath, string? additionalArguments = null, bool drop = false)
+        {
+            if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+            {
+                throw new InvalidOperationException("MongoDB runner is already disposed");
+            }
+
+            var mongoImportFilePath = this._runner._executableLocator.FindMongoImportExecutablePath()
+                ?? throw new InvalidOperationException("Could not find MongoDB import executable");
+
+            var arguments = string.Format(
+                CultureInfo.InvariantCulture,
+                @"--host 127.0.0.1 --port {0} --db {1} --collection {2} --file ""{3}"" {4} {5}",
+                this._runner._port, database, collection, inputFilePath, drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
+
+            using (var process = this._runner._processFactory.CreateMongoImportExportProcess(this._runner._options, mongoImportFilePath, arguments))
+            {
+                process.Start();
+            }
+        }
+
+        [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
+        public void Export(string database, string collection, string outputFilePath, string? additionalArguments = null)
+        {
+            if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+            {
+                throw new InvalidOperationException("MongoDB runner is already disposed");
+            }
+
+            var mongoExportFilePath = this._runner._executableLocator.FindMongoExportExecutablePath()
+                ?? throw new InvalidOperationException("Could not find MongoDB export executable");
+
+            var arguments = string.Format(
+                CultureInfo.InvariantCulture,
+                @"--host 127.0.0.1 --port {0} --db {1} --collection {2} --out ""{3}"" {4}",
+                this._runner._port, database, collection, outputFilePath, additionalArguments ?? string.Empty);
+
+            using (var process = this._runner._processFactory.CreateMongoImportExportProcess(this._runner._options, mongoExportFilePath, arguments))
+            {
+                process.Start();
+            }
+        }
 
         public void Dispose()
         {
