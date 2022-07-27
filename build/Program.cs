@@ -7,15 +7,17 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Build;
 using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Net;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.MSBuild;
 using Cake.Common.Tools.DotNet.NuGet.Push;
+using Cake.Common.Tools.DotNet.NuGet.Source;
 using Cake.Common.Tools.DotNet.Pack;
+using Cake.Common.Tools.DotNet.Test;
 using Cake.Common.Tools.GitVersion;
 using Cake.Compression;
 using Cake.Core;
@@ -38,6 +40,8 @@ public static class Constants
     public static readonly string OutputDirectoryPath = Path.Combine("..", ".output");
     public static readonly string SolutionPath = Path.Combine(SourceDirectoryPath, "Askaiser.EphemeralMongo.sln");
     public static readonly string RuntimesToolsPath = Path.Combine(SourceDirectoryPath, "Askaiser.EphemeralMongo.Runtimes", "tools");
+    public static readonly string TestProjectPath = Path.Combine(SourceDirectoryPath, "Askaiser.EphemeralMongo.Core.Tests", "Askaiser.EphemeralMongo.Core.Tests.csproj");
+    public static readonly string CoreProjectPath = Path.Combine(SourceDirectoryPath, "Askaiser.EphemeralMongo.Core", "Askaiser.EphemeralMongo.Core.csproj");
 }
 
 public class BuildContext : FrostingContext
@@ -53,6 +57,8 @@ public class BuildContext : FrostingContext
     public string NugetApiKey { get; }
 
     public string NugetSource { get; }
+
+    public string PackageVersion { get; set; } = string.Empty;
 
     public void AddMSBuildSetting(string name, string value, bool log = false)
     {
@@ -99,6 +105,8 @@ public sealed class GitVersionTask : FrostingTask<BuildContext>
         context.AddMSBuildSetting("FileVersion", gitVersion.AssemblySemFileVer, log: true);
         context.AddMSBuildSetting("RepositoryBranch", gitVersion.BranchName, log: true);
         context.AddMSBuildSetting("RepositoryCommit", gitVersion.Sha, log: true);
+
+        context.PackageVersion = gitVersion.FullSemVer;
     }
 }
 
@@ -320,113 +328,6 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
             }
         }
     }
-
-    private sealed class ProjectInfo
-    {
-        public ProjectInfo(string name, string target, string architecture, string edition, string version)
-        {
-            this.Name = name;
-            this.Target = target;
-            this.Architecture = architecture;
-            this.Edition = edition;
-            this.Version = version;
-        }
-
-        public string Name { get; }
-
-        public string Target { get;  }
-
-        public string Architecture { get; }
-
-        public string Edition { get; }
-
-        public string Version { get; }
-
-        public string MongoExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongod.exe" : "mongod";
-
-        public string MongoImportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoimport.exe" : "mongoimport";
-
-        public string MongoExportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoexport.exe" : "mongoexport";
-    }
-
-    private sealed class ToolsVersionsDto
-    {
-        [JsonPropertyName("versions")]
-        public ToolsVersionDto[] Versions { get; set; } = Array.Empty<ToolsVersionDto>();
-    }
-
-    private sealed class ToolsVersionDto
-    {
-        [JsonPropertyName("downloads")]
-        public ToolsDownloadDto[] Downloads { get; set; } = Array.Empty<ToolsDownloadDto>();
-    }
-
-    private sealed class ToolsDownloadDto
-    {
-        [JsonPropertyName("name")]
-        public string Name { get; set; } = string.Empty;
-
-        [JsonPropertyName("arch")]
-        public string Architecture { get; set; } = string.Empty;
-
-        [JsonPropertyName("archive")]
-        public ToolsArchiveDto Archive { get; set; } = ToolsArchiveDto.Empty;
-    }
-
-    private sealed class ToolsArchiveDto
-    {
-        public static readonly ToolsArchiveDto Empty = new ToolsArchiveDto();
-
-        [JsonPropertyName("url")]
-        public string Url { get; set; } = string.Empty;
-
-        [JsonPropertyName("sha256")]
-        public string Sha256 { get; set; } = string.Empty;
-    }
-
-    private sealed class MongoVersionsDto
-    {
-        [JsonPropertyName("versions")]
-        public MongoVersionDto[] Versions { get; set; } = Array.Empty<MongoVersionDto>();
-    }
-
-    private sealed class MongoVersionDto
-    {
-        [JsonPropertyName("production_release")]
-        public bool ProductionRelease { get; set; }
-
-        [JsonPropertyName("version")]
-        public string Version { get; set; } = string.Empty;
-
-        [JsonPropertyName("downloads")]
-        public MongoDownloadDto[] Downloads { get; set; } = Array.Empty<MongoDownloadDto>();
-    }
-
-    private sealed class MongoDownloadDto
-    {
-        [JsonPropertyName("arch")]
-        public string Architecture { get; set; } = string.Empty;
-
-        [JsonPropertyName("edition")]
-        public string Edition { get; set; } = string.Empty;
-
-        [JsonPropertyName("target")]
-        public string Target { get; set; } = string.Empty;
-
-        [JsonPropertyName("archive")]
-        public MongoArchiveDto Archive { get; set; } = MongoArchiveDto.Empty;
-    }
-
-    private sealed class MongoArchiveDto
-    {
-        public static readonly MongoArchiveDto Empty = new MongoArchiveDto();
-
-        [JsonPropertyName("url")]
-        public string Url { get; set; } = string.Empty;
-
-        [JsonPropertyName("sha256")]
-        public string Sha256 { get; set; } = string.Empty;
-    }
 }
 
 [TaskName("Pack")]
@@ -444,8 +345,60 @@ public sealed class PackTask : FrostingTask<BuildContext>
     });
 }
 
-[TaskName("Push")]
+[TaskName("Test")]
 [IsDependentOn(typeof(PackTask))]
+public sealed class TestTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        var source = context.MakeAbsolute(context.File(Constants.OutputDirectoryPath)).FullPath.Replace('/', Path.DirectorySeparatorChar);
+
+        context.DotNetNuGetAddSource("output", new DotNetNuGetSourceSettings
+        {
+            Source = source
+        });
+
+        try
+        {
+            context.DotNetRemoveReference(Constants.TestProjectPath, Constants.CoreProjectPath);
+
+            var packageNames = new[]
+            {
+                "Askaiser.EphemeralMongo4",
+                "Askaiser.EphemeralMongo5",
+                "Askaiser.EphemeralMongo6",
+            };
+
+            foreach (var packageName in packageNames)
+            {
+                context.DotNetAddPackage(Constants.TestProjectPath, packageName, context.PackageVersion);
+
+                try
+                {
+                    context.DotNetTest(Constants.TestProjectPath, new DotNetTestSettings
+                    {
+                        Configuration = Constants.Release,
+                        NoBuild = false,
+                        NoRestore = false,
+                        NoLogo = true,
+                    });
+                }
+                finally
+                {
+                    context.DotNetRemovePackage(Constants.TestProjectPath, packageName);
+                }
+            }
+        }
+        finally
+        {
+            context.DotNetNuGetRemoveSource("output");
+            context.DotNetAddReference(Constants.TestProjectPath, Constants.CoreProjectPath);
+        }
+    }
+}
+
+[TaskName("Push")]
+[IsDependentOn(typeof(TestTask))]
 public sealed class PushTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
@@ -463,7 +416,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
 }
 
 [TaskName("Default")]
-[IsDependentOn(typeof(DownloadMongoTask))]
+[IsDependentOn(typeof(TestTask))]
 public sealed class DefaultTask : FrostingTask
 {
 }
