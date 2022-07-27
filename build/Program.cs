@@ -13,10 +13,12 @@ using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.Net;
 using Cake.Common.Tools.DotNet;
+using Cake.Common.Tools.DotNet.Build;
 using Cake.Common.Tools.DotNet.MSBuild;
 using Cake.Common.Tools.DotNet.NuGet.Push;
 using Cake.Common.Tools.DotNet.NuGet.Source;
 using Cake.Common.Tools.DotNet.Pack;
+using Cake.Common.Tools.DotNet.Restore;
 using Cake.Common.Tools.DotNet.Test;
 using Cake.Common.Tools.GitVersion;
 using Cake.Compression;
@@ -375,11 +377,24 @@ public sealed class TestTask : FrostingTask<BuildContext>
 
                 try
                 {
+                    context.DotNetRestore(Constants.TestProjectPath, new DotNetRestoreSettings
+                    {
+                        Force = true,
+                        NoCache = true,
+                    });
+
+                    context.DotNetBuild(Constants.TestProjectPath, new DotNetBuildSettings
+                    {
+                        Configuration = Constants.Release,
+                        NoRestore = true,
+                        NoLogo = true,
+                    });
+
                     context.DotNetTest(Constants.TestProjectPath, new DotNetTestSettings
                     {
                         Configuration = Constants.Release,
-                        NoBuild = false,
-                        NoRestore = false,
+                        NoBuild = true,
+                        NoRestore = true,
                         NoLogo = true,
                     });
                 }
