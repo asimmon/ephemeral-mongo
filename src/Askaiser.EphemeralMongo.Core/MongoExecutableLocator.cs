@@ -28,8 +28,8 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
     private static readonly Dictionary<OSPlatform, string> RidMappings = new Dictionary<OSPlatform, string>
     {
         [OSPlatform.Windows] = "win-x64",
-        [OSPlatform.Linux] = "osx-x64",
-        [OSPlatform.OSX] = "linux-x64",
+        [OSPlatform.Linux] = "linux-x64",
+        [OSPlatform.OSX] = "osx-x64",
     };
 
     public string? FindMongoExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
