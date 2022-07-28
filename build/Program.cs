@@ -428,7 +428,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
 }
 
 [TaskName("Default")]
-[IsDependentOn(typeof(PackTask))]
+[IsDependentOn(typeof(TestTask))]
 public sealed class DefaultTask : FrostingTask
 {
 }

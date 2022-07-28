@@ -32,11 +32,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.ru
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.runtime.win-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo4.csproj", "{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5", "Askaiser.EphemeralMongo5\Askaiser.EphemeralMongo5.csproj", "{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo5.csproj", "{36096B0D-BD12-4E86-987A-13CAB075F668}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6", "Askaiser.EphemeralMongo6\Askaiser.EphemeralMongo6.csproj", "{9BA549AC-C09B-4913-B5ED-981BE389F0BF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo6.csproj", "{27528659-B473-444B-AB61-294EAFD6DC22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4", "Askaiser.EphemeralMongo4\Askaiser.EphemeralMongo4.csproj", "{8C870B89-8E0C-47CE-9041-D04E2244045F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -88,18 +88,18 @@ Global
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{36096B0D-BD12-4E86-987A-13CAB075F668}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36096B0D-BD12-4E86-987A-13CAB075F668}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36096B0D-BD12-4E86-987A-13CAB075F668}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36096B0D-BD12-4E86-987A-13CAB075F668}.Release|Any CPU.Build.0 = Release|Any CPU
-		{27528659-B473-444B-AB61-294EAFD6DC22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{27528659-B473-444B-AB61-294EAFD6DC22}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{27528659-B473-444B-AB61-294EAFD6DC22}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{27528659-B473-444B-AB61-294EAFD6DC22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C870B89-8E0C-47CE-9041-D04E2244045F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C870B89-8E0C-47CE-9041-D04E2244045F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C870B89-8E0C-47CE-9041-D04E2244045F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C870B89-8E0C-47CE-9041-D04E2244045F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}

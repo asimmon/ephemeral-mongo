@@ -1,7 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <MongoVersion>6</MongoVersion>
-  </PropertyGroup>
-
-  <Import Project="Askaiser.EphemeralMongo.targets" />
-</Project>
