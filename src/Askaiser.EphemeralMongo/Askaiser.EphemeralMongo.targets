@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <Description>.NET native wrapper for MongoDB $(MongoVersion) built for .NET Standard 2.0.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Askaiser.EphemeralMongo.Core\Askaiser.EphemeralMongo.Core.csproj" />
+    <ProjectReference Include="..\Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo$(MongoVersion).runtime.linux-x64.csproj" />
+    <ProjectReference Include="..\Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo$(MongoVersion).runtime.osx-x64.csproj" />
+    <ProjectReference Include="..\Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo$(MongoVersion).runtime.win-x64.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128#solution-1 -->
+    <None Include="_._" Pack="true" PackagePath="lib\$(TargetFramework)" />
+    <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

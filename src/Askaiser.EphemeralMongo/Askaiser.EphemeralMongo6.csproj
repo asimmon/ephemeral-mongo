@@ -3,5 +3,5 @@
     <MongoVersion>6</MongoVersion>
   </PropertyGroup>
 
-  <Import Project="Askaiser.EphemeralMongo.runtime.targets" />
+  <Import Project="Askaiser.EphemeralMongo.targets" />
 </Project>

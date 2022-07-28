@@ -14,10 +14,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "runtimes", "runtimes", "{81
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo.Core", "Askaiser.EphemeralMongo.Core\Askaiser.EphemeralMongo.Core.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4", "Askaiser.EphemeralMongo4\Askaiser.EphemeralMongo4.csproj", "{0C84D421-046A-4784-B1AB-5641E8ECE51C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5", "Askaiser.EphemeralMongo5\Askaiser.EphemeralMongo5.csproj", "{43802A86-4B5A-4DF0-A2BF-681190D59301}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.runtime.win-x64.csproj", "{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.runtime.linux-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.runtime.linux-x64.csproj", "{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}"
@@ -36,7 +32,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.ru
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.runtime.win-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6", "Askaiser.EphemeralMongo6\Askaiser.EphemeralMongo6.csproj", "{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo4.csproj", "{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo5.csproj", "{36096B0D-BD12-4E86-987A-13CAB075F668}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6", "Askaiser.EphemeralMongo\Askaiser.EphemeralMongo6.csproj", "{27528659-B473-444B-AB61-294EAFD6DC22}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -52,14 +52,6 @@ Global
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0C84D421-046A-4784-B1AB-5641E8ECE51C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0C84D421-046A-4784-B1AB-5641E8ECE51C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0C84D421-046A-4784-B1AB-5641E8ECE51C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0C84D421-046A-4784-B1AB-5641E8ECE51C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{43802A86-4B5A-4DF0-A2BF-681190D59301}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{43802A86-4B5A-4DF0-A2BF-681190D59301}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{43802A86-4B5A-4DF0-A2BF-681190D59301}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{43802A86-4B5A-4DF0-A2BF-681190D59301}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Release|Any CPU.ActiveCfg = Debug|Any CPU
@@ -96,10 +88,18 @@ Global
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB0350F9-AEFF-4252-ADA6-5AB0FA9B10AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36096B0D-BD12-4E86-987A-13CAB075F668}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36096B0D-BD12-4E86-987A-13CAB075F668}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36096B0D-BD12-4E86-987A-13CAB075F668}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36096B0D-BD12-4E86-987A-13CAB075F668}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27528659-B473-444B-AB61-294EAFD6DC22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27528659-B473-444B-AB61-294EAFD6DC22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27528659-B473-444B-AB61-294EAFD6DC22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27528659-B473-444B-AB61-294EAFD6DC22}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}

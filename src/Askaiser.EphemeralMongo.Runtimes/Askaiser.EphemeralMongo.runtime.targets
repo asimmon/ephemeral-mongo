@@ -4,7 +4,7 @@
     <ImplicitUsings>false</ImplicitUsings>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <IsPackable>true</IsPackable>
-    <Description>TODO</Description>
+    <Description>.NET wrapper for MongoDB $(MongoVersion) built for .NET Standard 2.0.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>native</PackageTags>
   </PropertyGroup>
