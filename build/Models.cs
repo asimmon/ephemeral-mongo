@@ -5,13 +5,14 @@ namespace Build;
 
 public sealed class ProjectInfo
 {
-    public ProjectInfo(string name, string target, string architecture, string edition, string version)
+    public ProjectInfo(string name, string target, string architecture, string edition, string version, string rid)
     {
         this.Name = name;
         this.Target = target;
         this.Architecture = architecture;
         this.Edition = edition;
         this.Version = version;
+        this.Rid = rid;
     }
 
     public string Name { get; }
@@ -23,6 +24,8 @@ public sealed class ProjectInfo
     public string Edition { get; }
 
     public string Version { get; }
+
+    public string Rid { get; }
 
     public string MongoExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongod.exe" : "mongod";
 

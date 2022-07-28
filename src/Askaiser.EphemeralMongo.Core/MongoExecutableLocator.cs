@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Askaiser.EphemeralMongo.Core;
@@ -25,6 +29,13 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
         [OSPlatform.OSX] = "mongoexport",
     };
 
+    private static readonly Dictionary<OSPlatform, string> RidMappings = new Dictionary<OSPlatform, string>
+    {
+        [OSPlatform.Windows] = "win-x64",
+        [OSPlatform.Linux] = "osx-x64",
+        [OSPlatform.OSX] = "linux-x64",
+    };
+
     public string? FindMongoExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
 
     public string? FindMongoImportExecutablePath() => GetPotentialMongoExecutablePaths(GetMongoImportExecutableFileName()).Where(x => x.Exists).Select(x => x.FullName).FirstOrDefault();
@@ -43,19 +54,23 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
         MongoExportExecutableFileNameMappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
         ?? throw new NotSupportedException("Current operating system is not supported");
 
+    private static string GetRid() =>
+        RidMappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
+        ?? throw new NotSupportedException("Current operating system is not supported");
+
     // https://stackoverflow.com/questions/52797/how-do-i-get-the-path-of-the-assembly-the-code-is-in
     private static IEnumerable<FileInfo> GetPotentialMongoExecutablePaths(string mongoExecutableFileName)
     {
-        var relativeMongodPath = Path.Combine("tools", "mongodb", "bin", mongoExecutableFileName);
+        var relativeExecutablePath = Path.Combine("runtimes", GetRid(), "native", "mongodb", "bin", mongoExecutableFileName);
 
-        yield return new FileInfo(Path.Combine(AppContext.BaseDirectory, relativeMongodPath));
+        yield return new FileInfo(Path.Combine(AppContext.BaseDirectory, relativeExecutablePath));
 
-        yield return new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeMongodPath));
+        yield return new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeExecutablePath));
 
         var uri = new UriBuilder(typeof(MongoExecutableLocator).Assembly.CodeBase);
         if (Path.GetDirectoryName(Uri.UnescapeDataString(uri.Path)) is { } path)
         {
-            yield return new FileInfo(Path.Combine(path, relativeMongodPath));
+            yield return new FileInfo(Path.Combine(path, relativeExecutablePath));
         }
     }
 }

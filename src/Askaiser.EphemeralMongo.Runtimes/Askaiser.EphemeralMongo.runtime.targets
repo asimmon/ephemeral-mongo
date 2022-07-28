@@ -6,16 +6,14 @@
     <IsPackable>true</IsPackable>
     <Description>TODO</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>native</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
 
     <!-- Only package the MongoDB executable for this particular project -->
-    <None Remove="tools\**" />
-    <None Include="tools\$(AssemblyName)\**\*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="tools\mongodb\" />
-
-    <!-- Include custom targets in the package so the MongoDB executable can be copied to the output directory of projects that will consume the package -->
-    <None Include="build\mongodb.targets" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="build\$(AssemblyName).targets" />
+    <None Remove="runtimes\**" />
+    <None Include="runtimes\$(AssemblyName)\**\*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="runtimes\" />
   </ItemGroup>
 </Project>

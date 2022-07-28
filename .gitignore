@@ -391,4 +391,4 @@ build/tools/**
 !build/tools/packages.config
 
 # MongoDB tools
-/src/Askaiser.EphemeralMongo.Runtimes/tools/**
+/src/Askaiser.EphemeralMongo.Runtimes/runtimes/**

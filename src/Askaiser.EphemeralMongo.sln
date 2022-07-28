@@ -18,23 +18,23 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5", "Askaiser.EphemeralMongo5\Askaiser.EphemeralMongo5.csproj", "{43802A86-4B5A-4DF0-A2BF-681190D59301}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.windows-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.windows-x86-x64.csproj", "{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.runtime.win-x64.csproj", "{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.ubuntu1804-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.ubuntu1804-x86-x64.csproj", "{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.runtime.linux-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.runtime.linux-x64.csproj", "{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.macos-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.macos-x86-x64.csproj", "{2FE78276-0B9B-4B76-9648-73AF4F409160}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo5.runtime.osx-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo5.runtime.osx-x64.csproj", "{2FE78276-0B9B-4B76-9648-73AF4F409160}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.windows-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.windows-x86-x64.csproj", "{35D46C11-286E-4EA4-A937-A285E4E2CC89}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.runtime.win-x64.csproj", "{35D46C11-286E-4EA4-A937-A285E4E2CC89}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.ubuntu1804-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.ubuntu1804-x86-x64.csproj", "{A9B30B5B-5F6D-4404-BE6D-5B398775E2EB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.runtime.linux-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.runtime.linux-x64.csproj", "{A9B30B5B-5F6D-4404-BE6D-5B398775E2EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.macos-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.macos-x86-x64.csproj", "{8E6946D1-0F1A-4C9A-BF3B-B37D4D8DAB32}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo4.runtime.osx-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo4.runtime.osx-x64.csproj", "{8E6946D1-0F1A-4C9A-BF3B-B37D4D8DAB32}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.macos-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.macos-x86-x64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.runtime.osx-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.runtime.osx-x64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.ubuntu1804-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.ubuntu1804-x86-x64.csproj", "{6D723CAC-6C36-432B-AF82-FED039080D40}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.runtime.linux-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.runtime.linux-x64.csproj", "{6D723CAC-6C36-432B-AF82-FED039080D40}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.windows-x86-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.windows-x86-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6.runtime.win-x64", "Askaiser.EphemeralMongo.Runtimes\Askaiser.EphemeralMongo6.runtime.win-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Askaiser.EphemeralMongo6", "Askaiser.EphemeralMongo6\Askaiser.EphemeralMongo6.csproj", "{1FF8D8DE-D5AC-48A1-A74D-953AFC5A90F5}"
 EndProject
