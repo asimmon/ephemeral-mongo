@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <Copyright>Copyright © Anthony Simmon $([System.DateTime]::UtcNow.ToString(yyyy))</Copyright>
+    <Authors>Anthony Simmon</Authors>
+    <Owners>Anthony Simmon</Owners>
+    <PackageProjectUrl>https://github.com/asimmon/ephemeral-mongo</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <LangVersion>10</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>false</IncludeSymbols>
+    <PackageTags>MongoDB;Mongo;test;testing;unittest;integrationtest</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

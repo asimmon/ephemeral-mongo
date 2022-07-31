@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <MongoVersion>4</MongoVersion>
+    <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
+    <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <Description>.NET native wrapper for MongoDB $(FullMongoVersion) built for .NET Standard 2.0.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EphemeralMongo.Core\EphemeralMongo.Core.csproj" />
+    <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.linux-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
+    <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.osx-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
+    <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.win-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128#solution-1 -->
+    <None Include="_._" Pack="true" PackagePath="lib\$(TargetFramework)" />
+    <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>
