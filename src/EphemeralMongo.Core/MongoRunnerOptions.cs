@@ -1,4 +1,4 @@
-﻿namespace EphemeralMongo.Core;
+﻿namespace EphemeralMongo;
 
 public sealed class MongoRunnerOptions
 {

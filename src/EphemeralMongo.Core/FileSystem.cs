@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 internal sealed class FileSystem : IFileSystem
 {

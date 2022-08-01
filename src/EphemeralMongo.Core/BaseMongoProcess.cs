@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 internal abstract class BaseMongoProcess : IMongoProcess
 {
