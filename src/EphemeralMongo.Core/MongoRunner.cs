@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 public sealed class MongoRunner : IDisposable
 {

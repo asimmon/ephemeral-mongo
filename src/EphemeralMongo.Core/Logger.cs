@@ -1,3 +1,3 @@
-﻿namespace EphemeralMongo.Core;
+﻿namespace EphemeralMongo;
 
 public delegate void Logger(string text);

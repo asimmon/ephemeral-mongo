@@ -1,4 +1,4 @@
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 internal enum MongoProcessKind
 {

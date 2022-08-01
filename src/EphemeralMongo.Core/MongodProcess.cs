@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Servers;
 
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 internal sealed class MongodProcess : BaseMongoProcess
 {

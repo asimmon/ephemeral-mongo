@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace EphemeralMongo.Core;
+namespace EphemeralMongo;
 
 internal sealed class PortFactory : IPortFactory
 {
