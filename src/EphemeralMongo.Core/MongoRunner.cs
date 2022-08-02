@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace EphemeralMongo;
 
-public sealed class MongoRunner : IDisposable
+public sealed class MongoRunner
 {
     private readonly IFileSystem _fileSystem;
     private readonly IPortFactory _portFactory;
@@ -33,36 +33,44 @@ public sealed class MongoRunner : IDisposable
 
     private IMongoRunner RunInternal()
     {
-        // Ensure data directory exists and has no existing MongoDB lock file
-        this._dataDirectory = this._options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        this._fileSystem.CreateDirectory(this._dataDirectory);
+        try
+        {
+            // Find MongoDB and make it executable
+            var executablePath = this._executableLocator.FindMongoExecutablePath(this._options, MongoProcessKind.Mongod);
+            this._fileSystem.MakeFileExecutable(executablePath);
 
-        // https://stackoverflow.com/a/6857973/825695
-        var lockFilePath = Path.Combine(this._dataDirectory, "mongod.lock");
-        this._fileSystem.DeleteFile(lockFilePath);
+            // Ensure data directory exists and has no existing MongoDB lock file
+            this._dataDirectory = this._options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            this._fileSystem.CreateDirectory(this._dataDirectory);
 
-        // Find MongoDB and make it executable
-        var executablePath = this._executableLocator.FindMongoExecutablePath(this._options, MongoProcessKind.Mongod);
-        this._fileSystem.MakeFileExecutable(executablePath);
+            // https://stackoverflow.com/a/6857973/825695
+            var lockFilePath = Path.Combine(this._dataDirectory, "mongod.lock");
+            this._fileSystem.DeleteFile(lockFilePath);
 
-        this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
+            this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
 
-        // Build MongoDB executable arguments
-        var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, this._options.MongoPort);
-        arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
-        arguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
-        arguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
+            // Build MongoDB executable arguments
+            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, this._options.MongoPort);
+            arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
+            arguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
+            arguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
 
-        this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, arguments);
-        this._process.Start();
+            this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, arguments);
+            this._process.Start();
 
-        var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
-        var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
+            var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
+            var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
 
-        return new StartedMongoRunner(this, connectionString);
+            return new StartedMongoRunner(this, connectionString);
+        }
+        catch
+        {
+            this.Dispose(throwOnException: false);
+            throw;
+        }
     }
 
-    public void Dispose()
+    private void Dispose(bool throwOnException)
     {
         var exceptions = new List<Exception>(1);
 
@@ -77,7 +85,8 @@ public sealed class MongoRunner : IDisposable
 
         try
         {
-            if (this._dataDirectory != null)
+            // Do not dispose data directory if it was a user input
+            if (this._dataDirectory != null && this._options.DataDirectory == null)
             {
                 this._fileSystem.DeleteDirectory(this._dataDirectory);
             }
@@ -87,13 +96,16 @@ public sealed class MongoRunner : IDisposable
             exceptions.Add(ex);
         }
 
-        if (exceptions.Count == 1)
+        if (throwOnException)
         {
-            ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
-        }
-        else if (exceptions.Count > 1)
-        {
-            throw new AggregateException(exceptions);
+            if (exceptions.Count == 1)
+            {
+                ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            }
+            else if (exceptions.Count > 1)
+            {
+                throw new AggregateException(exceptions);
+            }
         }
     }
 
@@ -186,7 +198,7 @@ public sealed class MongoRunner : IDisposable
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 1, 0) == 0)
             {
-                this._runner.Dispose();
+                this._runner.Dispose(throwOnException: true);
             }
         }
     }
