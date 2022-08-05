@@ -24,23 +24,10 @@ internal sealed class FileSystem : IFileSystem
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            var chmod = Process.Start("chmod", "+x " + path);
-            if (chmod != null)
-            {
-                try
-                {
-                    chmod.WaitForExit();
-
-                    if (chmod.ExitCode != 0)
-                    {
-                        throw new IOException($"Could not set executable bit for '{path}'");
-                    }
-                }
-                finally
-                {
-                    chmod.Dispose();
-                }
-            }
+            // Do not throw if exit code is not equal to zero.
+            // If there's something wrong with the path or permissions, we'll see it later.
+            using var chmod = Process.Start("chmod", "+x " + ProcessArguments.Escape(path));
+            chmod?.WaitForExit();
         }
     }
 }

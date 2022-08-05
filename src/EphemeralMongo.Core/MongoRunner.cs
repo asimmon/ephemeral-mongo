@@ -39,18 +39,26 @@ public sealed class MongoRunner
             var executablePath = this._executableLocator.FindMongoExecutablePath(this._options, MongoProcessKind.Mongod);
             this._fileSystem.MakeFileExecutable(executablePath);
 
-            // Ensure data directory exists and has no existing MongoDB lock file
+            // Ensure data directory exists...
             this._dataDirectory = this._options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             this._fileSystem.CreateDirectory(this._dataDirectory);
 
-            // https://stackoverflow.com/a/6857973/825695
-            var lockFilePath = Path.Combine(this._dataDirectory, "mongod.lock");
-            this._fileSystem.DeleteFile(lockFilePath);
+            try
+            {
+                // ...and has no existing MongoDB lock file
+                // https://stackoverflow.com/a/6857973/825695
+                var lockFilePath = Path.Combine(this._dataDirectory, "mongod.lock");
+                this._fileSystem.DeleteFile(lockFilePath);
+            }
+            catch
+            {
+                // Ignored - this data directory might already be in use, we'll see later how mongod reacts
+            }
 
             this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
 
             // Build MongoDB executable arguments
-            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath \"{0}\" --port {1} --bind_ip 127.0.0.1", this._dataDirectory, this._options.MongoPort);
+            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArguments.Escape(this._dataDirectory), this._options.MongoPort);
             arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
             arguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
             arguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
@@ -146,11 +154,12 @@ public sealed class MongoRunner
             }
 
             var executablePath = this._runner._executableLocator.FindMongoExecutablePath(this._runner._options, MongoProcessKind.MongoImport);
+            this._runner._fileSystem.MakeFileExecutable(executablePath);
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
-                @"--uri=""{0}"" --db={1} --collection={2} --file=""{3}"" {4} {5}",
-                this.ConnectionString, database, collection, inputFilePath, drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
+                @"--uri=""{0}"" --db={1} --collection={2} --file={3} {4} {5}",
+                this.ConnectionString, database, collection, ProcessArguments.Escape(inputFilePath), drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoProcess(this._runner._options, MongoProcessKind.MongoImport, executablePath, arguments))
             {
@@ -182,11 +191,12 @@ public sealed class MongoRunner
             }
 
             var executablePath = this._runner._executableLocator.FindMongoExecutablePath(this._runner._options, MongoProcessKind.MongoExport);
+            this._runner._fileSystem.MakeFileExecutable(executablePath);
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
-                @"--uri=""{0}"" --db={1} --collection={2} --out=""{3}"" {4}",
-                this.ConnectionString, database, collection, outputFilePath, additionalArguments ?? string.Empty);
+                @"--uri=""{0}"" --db={1} --collection={2} --out={3} {4}",
+                this.ConnectionString, database, collection, ProcessArguments.Escape(outputFilePath), additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoProcess(this._runner._options, MongoProcessKind.MongoExport, executablePath, arguments))
             {
