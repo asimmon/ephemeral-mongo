@@ -2,7 +2,7 @@
 
 namespace EphemeralMongo;
 
-public static class ProcessArguments
+internal static class ProcessArgument
 {
     private const char DoubleQuote = '"';
     private const char Backslash = '\\';

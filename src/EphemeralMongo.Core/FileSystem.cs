@@ -26,7 +26,7 @@ internal sealed class FileSystem : IFileSystem
         {
             // Do not throw if exit code is not equal to zero.
             // If there's something wrong with the path or permissions, we'll see it later.
-            using var chmod = Process.Start("chmod", "+x " + ProcessArguments.Escape(path));
+            using var chmod = Process.Start("chmod", "+x " + ProcessArgument.Escape(path));
             chmod?.WaitForExit();
         }
     }

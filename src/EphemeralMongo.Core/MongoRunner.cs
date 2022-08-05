@@ -58,7 +58,7 @@ public sealed class MongoRunner
             this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
 
             // Build MongoDB executable arguments
-            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArguments.Escape(this._dataDirectory), this._options.MongoPort);
+            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArgument.Escape(this._dataDirectory), this._options.MongoPort);
             arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
             arguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
             arguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
@@ -159,7 +159,7 @@ public sealed class MongoRunner
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
                 @"--uri=""{0}"" --db={1} --collection={2} --file={3} {4} {5}",
-                this.ConnectionString, database, collection, ProcessArguments.Escape(inputFilePath), drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
+                this.ConnectionString, database, collection, ProcessArgument.Escape(inputFilePath), drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoProcess(this._runner._options, MongoProcessKind.MongoImport, executablePath, arguments))
             {
@@ -196,7 +196,7 @@ public sealed class MongoRunner
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
                 @"--uri=""{0}"" --db={1} --collection={2} --out={3} {4}",
-                this.ConnectionString, database, collection, ProcessArguments.Escape(outputFilePath), additionalArguments ?? string.Empty);
+                this.ConnectionString, database, collection, ProcessArgument.Escape(outputFilePath), additionalArguments ?? string.Empty);
 
             using (var process = this._runner._processFactory.CreateMongoProcess(this._runner._options, MongoProcessKind.MongoExport, executablePath, arguments))
             {
