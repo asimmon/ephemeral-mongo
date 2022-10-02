@@ -132,5 +132,15 @@ public class MongoRunnerTests : BaseIntegrationTest
         public string Id { get; set; } = string.Empty;
 
         public string Name { get; set; } = string.Empty;
+
+        private bool Equals(Person other)
+        {
+            return this.Id == other.Id && this.Name == other.Name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return ReferenceEquals(this, obj) || (obj is Person other && this.Equals(other));
+        }
     }
 }
