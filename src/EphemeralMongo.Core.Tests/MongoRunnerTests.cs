@@ -21,6 +21,7 @@ public class MongoRunnerTests : BaseIntegrationTest
             StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
             StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
             BinaryDirectory = Guid.NewGuid().ToString(),
+            AdditionalArguments = string.Empty,
         };
 
         IMongoRunner? runner = null;
@@ -116,5 +117,30 @@ public class MongoRunnerTests : BaseIntegrationTest
         }
     }
 
-    private sealed record Person(string Id, string Name);
+    private sealed class Person
+    {
+        public Person()
+        {
+        }
+
+        public Person(string id, string name)
+        {
+            this.Id = id;
+            this.Name = name;
+        }
+
+        public string Id { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        private bool Equals(Person other)
+        {
+            return this.Id == other.Id && this.Name == other.Name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return ReferenceEquals(this, obj) || (obj is Person other && this.Equals(other));
+        }
+    }
 }

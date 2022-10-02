@@ -61,7 +61,7 @@ public sealed class MongoRunner
             var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArgument.Escape(this._dataDirectory), this._options.MongoPort);
             arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
             arguments += this._options.UseSingleNodeReplicaSet ? " --replSet " + this._options.ReplicaSetName : string.Empty;
-            arguments += this._options.AdditionalArguments == null ? string.Empty : " " + this._options.AdditionalArguments;
+            arguments += string.IsNullOrWhiteSpace(this._options.AdditionalArguments) ? string.Empty : " " + this._options.AdditionalArguments;
 
             this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, arguments);
             this._process.Start();
