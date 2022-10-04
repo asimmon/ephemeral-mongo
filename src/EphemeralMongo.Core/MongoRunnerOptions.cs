@@ -66,7 +66,7 @@ public sealed class MongoRunnerOptions
     // Internal properties start here
     internal string ReplicaSetName { get; set; } = "singleNodeReplSet";
 
-    internal int MongoPort { get; set; }
+    public int? MongoPort { get; set; }
 
     private static Exception? CheckDirectoryPathFormat(string? path)
     {

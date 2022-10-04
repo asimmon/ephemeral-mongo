@@ -58,7 +58,7 @@ public sealed class MongoRunner
                 // Ignored - this data directory might already be in use, we'll see later how mongod reacts
             }
 
-            this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
+            this._options.MongoPort ??= this._portFactory.GetRandomAvailablePort();
 
             // Build MongoDB executable arguments
             var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArgument.Escape(this._dataDirectory), this._options.MongoPort);
