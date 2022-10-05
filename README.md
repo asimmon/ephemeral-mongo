@@ -46,6 +46,7 @@ var options = new MongoRunnerOptions
     ConnectionTimeout = TimeSpan.FromSeconds(10), // Default: 30 seconds
     ReplicaSetSetupTimeout = TimeSpan.FromSeconds(5), // Default: 10 seconds
     AdditionalArguments = "--quiet", // Default: null
+    MongoPort = 27017, // Default: random port selection
 };
 
 // Disposing the runner will kill the MongoDB process (mongod) and delete the associated data directory
