@@ -27,7 +27,8 @@ public sealed class MongoRunner
 
     public static IMongoRunner Run(MongoRunnerOptions? options = null)
     {
-        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), options ?? new MongoRunnerOptions());
+        var optionsCopy = options == null ? new MongoRunnerOptions() : new MongoRunnerOptions(options);
+        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), optionsCopy);
         return runner.RunInternal();
     }
 

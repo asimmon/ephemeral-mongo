@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 EphemeralMongo.IMongoRunner
 EphemeralMongo.IMongoRunner.ConnectionString.get -> string!
 EphemeralMongo.IMongoRunner.Export(string! database, string! collection, string! outputFilePath, string? additionalArguments = null) -> void
@@ -15,6 +15,7 @@ EphemeralMongo.MongoRunnerOptions.ConnectionTimeout.set -> void
 EphemeralMongo.MongoRunnerOptions.DataDirectory.get -> string?
 EphemeralMongo.MongoRunnerOptions.DataDirectory.set -> void
 EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions() -> void
+EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions(EphemeralMongo.MongoRunnerOptions! options) -> void
 EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan
 EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.set -> void
 EphemeralMongo.MongoRunnerOptions.StandardErrorLogger.get -> EphemeralMongo.Logger?

@@ -7,6 +7,30 @@ public sealed class MongoRunnerOptions
     private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(30);
     private TimeSpan _replicaSetSetupTimeout = TimeSpan.FromSeconds(10);
 
+    public MongoRunnerOptions()
+    {
+    }
+
+    public MongoRunnerOptions(MongoRunnerOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        this._dataDirectory = options._dataDirectory;
+        this._binaryDirectory = options._binaryDirectory;
+        this._connectionTimeout = options._connectionTimeout;
+        this._replicaSetSetupTimeout = options._replicaSetSetupTimeout;
+
+        this.AdditionalArguments = options.AdditionalArguments;
+        this.UseSingleNodeReplicaSet = options.UseSingleNodeReplicaSet;
+        this.StandardOuputLogger = options.StandardOuputLogger;
+        this.StandardErrorLogger = options.StandardErrorLogger;
+        this.ReplicaSetName = options.ReplicaSetName;
+        this.MongoPort = options.MongoPort;
+    }
+
     public string? DataDirectory
     {
         get => this._dataDirectory;
