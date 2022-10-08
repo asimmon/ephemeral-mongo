@@ -86,19 +86,8 @@ internal sealed class MongodProcess : BaseMongoProcess
             var connectionString = string.Format(CultureInfo.InvariantCulture, "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}", this.Options.MongoPort, this.Options.ReplicaSetName);
 
             var client = new MongoClient(connectionString);
-            var admin = client.GetDatabase("admin");
 
-            var replConfig = new BsonDocument(new List<BsonElement>
-            {
-                new BsonElement("_id", this.Options.ReplicaSetName),
-                new BsonElement("members", new BsonArray
-                {
-                    new BsonDocument { { "_id", 0 }, { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", this.Options.MongoPort) } },
-                }),
-            });
-
-            var command = new BsonDocument("replSetInitiate", replConfig);
-            admin.RunCommand<BsonDocument>(command);
+            _ = Task.Factory.StartNew(InitializeReplicaSet, new Tuple<MongoRunnerOptions, MongoClient>(this.Options, client), TaskCreationOptions.LongRunning);
 
             var isReplicaSetReady = isReplicaSetReadyMre.Wait(this.Options.ReplicaSetSetupTimeout);
             if (!isReplicaSetReady)
@@ -130,6 +119,43 @@ internal sealed class MongodProcess : BaseMongoProcess
         finally
         {
             this.Process.OutputDataReceived -= OnOutputDataReceivedForReplicaSetReadiness;
+        }
+    }
+
+    private static void InitializeReplicaSet(object state)
+    {
+        var (options, client) = (Tuple<MongoRunnerOptions, MongoClient>)state;
+
+        try
+        {
+            var admin = client.GetDatabase("admin");
+
+            var replConfig = new BsonDocument(new List<BsonElement>
+            {
+                new BsonElement("_id", options.ReplicaSetName),
+                new BsonElement("members", new BsonArray
+                {
+                    new BsonDocument { { "_id", 0 }, { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", options.MongoPort) } },
+                }),
+            });
+
+            using (var cts = new CancellationTokenSource(options.ReplicaSetSetupTimeout))
+            {
+                var command = new BsonDocument("replSetInitiate", replConfig);
+                admin.RunCommand<BsonDocument>(command, cancellationToken: cts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // ignored
+        }
+        catch (TimeoutException)
+        {
+            // ignored
+        }
+        catch (Exception ex)
+        {
+            options.StandardErrorLogger?.Invoke("An error occurred while initializing the replica set: " + ex);
         }
     }
 }
