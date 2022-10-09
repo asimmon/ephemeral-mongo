@@ -425,6 +425,7 @@ public sealed class TestTask : FrostingTask<BuildContext>
                     context.DotNetTest(Constants.TestProjectPath, new DotNetTestSettings
                     {
                         Configuration = Constants.Release,
+                        Loggers = new[] { "console;verbosity=detailed", "trx" },
                         NoBuild = true,
                         NoRestore = true,
                         NoLogo = true,
