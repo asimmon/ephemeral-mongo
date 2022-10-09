@@ -2,6 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace EphemeralMongo;
 
@@ -209,7 +211,40 @@ public sealed class MongoRunner
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 1, 0) == 0)
             {
+                this.TryShutdownQuietly();
                 this._runner.Dispose(throwOnException: true);
+            }
+        }
+
+        private void TryShutdownQuietly()
+        {
+            // https://www.mongodb.com/docs/v4.4/reference/command/shutdown/
+            const int defaultShutdownTimeoutInSeconds = 10;
+
+            var shutdownCommand = new BsonDocument
+            {
+                { "shutdown", 1 },
+                { "force", true },
+                { "timeoutSecs", defaultShutdownTimeoutInSeconds },
+            };
+
+            try
+            {
+                var client = new MongoClient(this.ConnectionString);
+                var admin = client.GetDatabase("admin");
+
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(defaultShutdownTimeoutInSeconds)))
+                {
+                    admin.RunCommand<BsonDocument>(shutdownCommand, cancellationToken: cts.Token);
+                }
+            }
+            catch (MongoConnectionException)
+            {
+                // FYI this is the expected behavior as mongod is shutting down
+            }
+            catch
+            {
+                // Ignore other exceptions as well, we'll kill the process anyway
             }
         }
     }
