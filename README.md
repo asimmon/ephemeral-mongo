@@ -25,9 +25,9 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.15** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
-| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.10** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
-| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.0** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
+| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.17** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
+| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.13** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
+| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.2** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
 
 
 ## Usage
@@ -46,7 +46,7 @@ var options = new MongoRunnerOptions
     ConnectionTimeout = TimeSpan.FromSeconds(10), // Default: 30 seconds
     ReplicaSetSetupTimeout = TimeSpan.FromSeconds(5), // Default: 10 seconds
     AdditionalArguments = "--quiet", // Default: null
-    MongoPort = 27017, // Default: random port selection
+    MongoPort = 27017, // Default: random available port
 };
 
 // Disposing the runner will kill the MongoDB process (mongod) and delete the associated data directory
@@ -79,5 +79,7 @@ using (var runner = MongoRunner.Run(options))
 
 ## Tips
 
-Try not to call `MongoRunner.Run` in parallel, as this will create many `mongod` processes and make your operating system slower.
+Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` processes and make your operating system slower.
 Instead, try to use a single instance and reuse it - create as many databases as you need, one per test for example.
+
+Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d456e0be) for an implementation of a reusable `IMongoRunner`.
