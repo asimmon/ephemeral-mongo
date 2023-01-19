@@ -1,6 +1,6 @@
 # EphemeralMongo - temporary and disposable MongoDB for integration tests and local debugging
 
-[![build](https://img.shields.io/github/workflow/status/asimmon/ephemeral-mongo/CI%20build?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
+[![build](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
 
 **EphemeralMongo** is a set of three NuGet packages wrapping the binaries of **MongoDB 4**, **5** and **6**.
 Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 6 and later**.
