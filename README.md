@@ -81,7 +81,7 @@ using (var runner = MongoRunner.Run(options))
 
 EphemeralMongo4, 5 and 6 are NuGet *metapackages* that reference dedicated runtime packages for both Linux, macOS and Windows.
 As of now, there isn't a way to optimize NuGet package downloads for a specific operating system (see [#2](https://github.com/asimmon/ephemeral-mongo/issues/2)).
-However, one can still avoid referencing the metapackage and directly reference the dependencies packages instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and less downloads.
+However, one can still avoid referencing the metapackage and directly reference the dependencies instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and less downloads.
 
 Instead of doing this:
 
