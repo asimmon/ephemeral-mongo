@@ -1,6 +1,6 @@
 # EphemeralMongo - temporary and disposable MongoDB for integration tests and local debugging
 
-[![build](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
+[![build](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
 **EphemeralMongo** is a set of three NuGet packages wrapping the binaries of **MongoDB 4**, **5** and **6**.
 Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 6 and later**.
@@ -75,6 +75,27 @@ using (var runner = MongoRunner.Run(options))
 * `MongoRunner.Run` always starts a new `mongod` process with a random available port,
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet` and `AdditionalArguments`),
 * By default, a unique temporary data directory is used.
+
+
+## Reducing the download size
+
+EphemeralMongo4, 5 and 6 are NuGet *metapackages* that reference dedicated runtime packages for both Linux, macOS and Windows.
+As of now, there isn't a way to optimize NuGet package downloads for a specific operating system (see [#2](https://github.com/asimmon/ephemeral-mongo/issues/2)).
+However, one can still avoid referencing the metapackage and directly reference the dependencies instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and less downloads.
+
+Instead of doing this:
+
+```xml
+<PackageReference Include="EphemeralMongo6" Version="1.0.0" />
+```
+
+Do this:
+```xml
+<PackageReference Include="EphemeralMongo.Core" Version="1.0.0" />
+  <PackageReference Include="EphemeralMongo6.runtime.linux-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+  <PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+  <PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+```
 
 
 ## Tips
