@@ -92,9 +92,9 @@ Instead of doing this:
 Do this:
 ```xml
 <PackageReference Include="EphemeralMongo.Core" Version="1.0.0" />
-  <PackageReference Include="EphemeralMongo6.runtime.linux-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-  <PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-  <PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+<PackageReference Include="EphemeralMongo6.runtime.linux-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+<PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+<PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
 ```
 
 
