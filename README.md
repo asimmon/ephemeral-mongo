@@ -77,6 +77,27 @@ using (var runner = MongoRunner.Run(options))
 * By default, a unique temporary data directory is used.
 
 
+## Reducing the download size
+
+EphemeralMongo4, 5 and 6 are NuGet *metapackages* that reference dedicated runtime packages for both Linux, macOS and Windows.
+As of now, there isn't a way to optimize NuGet package downloads for a specific operating system (see [#2](https://github.com/asimmon/ephemeral-mongo/issues/2)).
+However, one can still avoid referencing the metapackage and directly reference the dependencies packages instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and less downloads.
+
+Instead of doing this:
+
+```xml
+<PackageReference Include="EphemeralMongo6" Version="1.0.0" />
+```
+
+Do this:
+```xml
+<PackageReference Include="EphemeralMongo.Core" Version="1.0.0" />
+  <PackageReference Include="EphemeralMongo6.runtime.linux-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+  <PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+  <PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+```
+
+
 ## Tips
 
 Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` processes and make your operating system slower.
