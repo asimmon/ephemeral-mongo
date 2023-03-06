@@ -8,6 +8,8 @@ internal abstract class BaseMongoProcess : IMongoProcess
     {
         this.Options = options;
 
+        NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
+
         var processStartInfo = new ProcessStartInfo
         {
             FileName = executablePath,
