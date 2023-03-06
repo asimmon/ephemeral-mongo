@@ -8,7 +8,10 @@ internal abstract class BaseMongoProcess : IMongoProcess
     {
         this.Options = options;
 
-        NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
+        if (options.KillMongoProcessesWhenCurrentProcessExits)
+        {
+            NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
+        }
 
         var processStartInfo = new ProcessStartInfo
         {

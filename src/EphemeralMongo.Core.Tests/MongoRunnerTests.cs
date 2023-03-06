@@ -22,6 +22,7 @@ public class MongoRunnerTests : BaseIntegrationTest
             StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
             BinaryDirectory = Guid.NewGuid().ToString(),
             AdditionalArguments = string.Empty,
+            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         IMongoRunner? runner = null;
@@ -51,6 +52,7 @@ public class MongoRunnerTests : BaseIntegrationTest
             UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
             StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
             StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
+            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         using (var runner = MongoRunner.Run(options))
