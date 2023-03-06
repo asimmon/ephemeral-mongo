@@ -47,6 +47,10 @@ var options = new MongoRunnerOptions
     ReplicaSetSetupTimeout = TimeSpan.FromSeconds(5), // Default: 10 seconds
     AdditionalArguments = "--quiet", // Default: null
     MongoPort = 27017, // Default: random available port
+
+    // EXPERIMENTAL - only works on Windows and non-.NET Framework (so netcoreapp3.1 and later is supported):
+    // Ensures that all created MongoDB processes are killed when the current process is prematurely killed.
+    KillMongoProcessesWhenCurrentProcessExits = true // Default: false
 };
 
 // Disposing the runner will kill the MongoDB process (mongod) and delete the associated data directory
