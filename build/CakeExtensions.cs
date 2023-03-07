@@ -1,5 +1,4 @@
 using Cake.Common.Tools.DotNet;
-using Cake.Common.Tools.DotNetCore;
 using Cake.Core;
 using Cake.Core.IO;
 using Cake.Core.Tooling;
@@ -37,7 +36,7 @@ public sealed class IgnoredDotNetSettings : DotNetSettings
 {
 }
 
-public sealed class DotNetAddReferenceRunner : DotNetCoreTool<IgnoredDotNetSettings>
+public sealed class DotNetAddReferenceRunner : DotNetTool<IgnoredDotNetSettings>
 {
     public DotNetAddReferenceRunner(IFileSystem fileSystem, ICakeEnvironment environment, IProcessRunner processRunner, IToolLocator tools)
         : base(fileSystem, environment, processRunner, tools)
@@ -57,7 +56,7 @@ public sealed class DotNetAddReferenceRunner : DotNetCoreTool<IgnoredDotNetSetti
     }
 }
 
-public sealed class DotNetRemoveReferenceRunner : DotNetCoreTool<IgnoredDotNetSettings>
+public sealed class DotNetRemoveReferenceRunner : DotNetTool<IgnoredDotNetSettings>
 {
     public DotNetRemoveReferenceRunner(IFileSystem fileSystem, ICakeEnvironment environment, IProcessRunner processRunner, IToolLocator tools)
         : base(fileSystem, environment, processRunner, tools)
@@ -77,7 +76,7 @@ public sealed class DotNetRemoveReferenceRunner : DotNetCoreTool<IgnoredDotNetSe
     }
 }
 
-public sealed class DotNetAddPackageRunner : DotNetCoreTool<IgnoredDotNetSettings>
+public sealed class DotNetAddPackageRunner : DotNetTool<IgnoredDotNetSettings>
 {
     public DotNetAddPackageRunner(IFileSystem fileSystem, ICakeEnvironment environment, IProcessRunner processRunner, IToolLocator tools)
         : base(fileSystem, environment, processRunner, tools)
@@ -116,7 +115,7 @@ public sealed class DotNetAddPackageRunner : DotNetCoreTool<IgnoredDotNetSetting
     }
 }
 
-public sealed class DotNetRemovePackageRunner : DotNetCoreTool<IgnoredDotNetSettings>
+public sealed class DotNetRemovePackageRunner : DotNetTool<IgnoredDotNetSettings>
 {
     public DotNetRemovePackageRunner(IFileSystem fileSystem, ICakeEnvironment environment, IProcessRunner processRunner, IToolLocator tools)
         : base(fileSystem, environment, processRunner, tools)
