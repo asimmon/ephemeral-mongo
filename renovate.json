@@ -25,7 +25,7 @@
       "matchManagers": ["nuget"],
       "matchPackageNames": ["MongoDB.Driver"],
       "groupName": "Ignored MongoDB.Driver",
-      "description": "We only set a minimum version. Vulnerability alerts will still check for any vulnerabilities.",
+      "description": "We only set a minimum required version, any vulnerabilities will still be reported",
       "enabled": false
     },
     {
