@@ -106,9 +106,9 @@ public sealed class MongoRunnerOptions
     }
 
     /// <summary>
-    /// EXPERIMENTAL - ONLY WORKS ON WINDOWS AND MODERN .NET ONLY (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
-    /// Ensures that all MongoDB-related child processes are killed when the current process exits or
-    /// is prematurely killed (for instance killed from the task manager or when canceling a test run).
+    /// EXPERIMENTAL - Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
+    /// Ensures that all MongoDB child processes are killed when the current process is prematurely killed,
+    /// for instance when killed from the task manager or the IDE unit tests window.
     /// </summary>
     public bool KillMongoProcessesWhenCurrentProcessExits { get; set; }
 

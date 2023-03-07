@@ -48,8 +48,9 @@ var options = new MongoRunnerOptions
     AdditionalArguments = "--quiet", // Default: null
     MongoPort = 27017, // Default: random available port
 
-    // EXPERIMENTAL - only works on Windows and non-.NET Framework (so netcoreapp3.1 and later is supported):
-    // Ensures that all created MongoDB processes are killed when the current process is prematurely killed.
+    // EXPERIMENTAL - Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
+    // Ensures that all MongoDB child processes are killed when the current process is prematurely killed,
+    // for instance when killed from the task manager or the IDE unit tests window.
     KillMongoProcessesWhenCurrentProcessExits = true // Default: false
 };
 
