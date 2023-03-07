@@ -1,0 +1,26 @@
+name: Renovate
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "7 2 * * *"
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Renovate
+        shell: bash
+        run: npx renovate $GITHUB_REPOSITORY
+        env:
+          RENOVATE_CONFIG_FILE: "renovate.json"
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          LOG_LEVEL: "debug"
