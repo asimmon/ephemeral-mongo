@@ -25,8 +25,8 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.18** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
-| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.14** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
+| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.19** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
+| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.15** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
 | **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.4** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
 
 
