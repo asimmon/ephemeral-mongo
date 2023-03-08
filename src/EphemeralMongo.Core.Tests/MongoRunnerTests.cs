@@ -1,6 +1,6 @@
+using GSoft.Extensions.Xunit;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using ShareGate.Extensions.Xunit;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -8,8 +8,8 @@ namespace EphemeralMongo.Core.Tests;
 
 public class MongoRunnerTests : BaseIntegrationTest
 {
-    public MongoRunnerTests(ITestOutputHelper testOutputHelper)
-        : base(testOutputHelper)
+    public MongoRunnerTests(EmptyIntegrationFixture fixture, ITestOutputHelper testOutputHelper)
+        : base(fixture, testOutputHelper)
     {
     }
 
@@ -21,7 +21,8 @@ public class MongoRunnerTests : BaseIntegrationTest
             StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
             StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
             BinaryDirectory = Guid.NewGuid().ToString(),
-            AdditionalArguments = string.Empty,
+            AdditionalArguments = "--quiet",
+            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         IMongoRunner? runner = null;
@@ -51,6 +52,8 @@ public class MongoRunnerTests : BaseIntegrationTest
             UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
             StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
             StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
+            AdditionalArguments = "--quiet",
+            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         using (var runner = MongoRunner.Run(options))

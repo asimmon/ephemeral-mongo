@@ -25,8 +25,8 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.18** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
-| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.14** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
+| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.19** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
+| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.15** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
 | **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.4** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
 
 
@@ -47,6 +47,11 @@ var options = new MongoRunnerOptions
     ReplicaSetSetupTimeout = TimeSpan.FromSeconds(5), // Default: 10 seconds
     AdditionalArguments = "--quiet", // Default: null
     MongoPort = 27017, // Default: random available port
+
+    // EXPERIMENTAL - Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
+    // Ensures that all MongoDB child processes are killed when the current process is prematurely killed,
+    // for instance when killed from the task manager or the IDE unit tests window.
+    KillMongoProcessesWhenCurrentProcessExits = true // Default: false
 };
 
 // Disposing the runner will kill the MongoDB process (mongod) and delete the associated data directory

@@ -7,6 +7,7 @@
     <Description>.NET wrapper for MongoDB $(FullMongoVersion) built for .NET Standard 2.0.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>native</PackageTags>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
     <NoWarn>$(NoWarn);NU5127</NoWarn>
   </PropertyGroup>
 
