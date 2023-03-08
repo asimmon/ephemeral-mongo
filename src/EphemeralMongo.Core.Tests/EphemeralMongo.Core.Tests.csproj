@@ -1,21 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net462;netcoreapp3.1;net6.0</TargetFrameworks>
+    <TargetFrameworks>net462;net6.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="GSoft.Extensions.Xunit" Version="1.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.5.0" />
-    <PackageReference Include="ShareGate.Extensions.Xunit" Version="0.1.2" />
+    <PackageReference Include="Microsoft.TestPlatform.ObjectModel" Version="17.5.0" Condition=" '$(OS)' != 'Windows_NT' " />
     <PackageReference Include="System.Memory" Version="4.5.5" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.TestPlatform.ObjectModel" Version="17.5.0" Condition=" '$(OS)' != 'Windows_NT' " />
   </ItemGroup>
 
   <ItemGroup>
