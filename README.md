@@ -18,7 +18,7 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 * There is a separate NuGet package for each operating system and MongoDB version so it's easier to support new major versions,
 * The latest MongoDB binaries are safely downloaded and verified by GitHub actions during the build or release workflow, reducing the Git repository size,
 * There's less chances of memory, files and directory leaks. The startup is faster by using C# threading primitives such as `ManualResetEventSlim`.
-* The CI tests the generated packages against .NET 4.6.2, .NET Core 3.1 and .NET 6 using the latest GitHub build agents for Ubuntu, macOS and Windows.
+* The CI tests the generated packages against .NET 4.6.2 and .NET 6 using the latest GitHub build agents for Ubuntu, macOS and Windows.
 
 
 ## Downloads
@@ -50,7 +50,8 @@ var options = new MongoRunnerOptions
 
     // EXPERIMENTAL - Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
     // Ensures that all MongoDB child processes are killed when the current process is prematurely killed,
-    // for instance when killed from the task manager or the IDE unit tests window.
+    // for instance when killed from the task manager or the IDE unit tests window. Processes are managed as a unit using
+    // job objects: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
     KillMongoProcessesWhenCurrentProcessExits = true // Default: false
 };
 
