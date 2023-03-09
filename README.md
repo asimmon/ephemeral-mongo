@@ -104,7 +104,13 @@ Do this:
 ```
 
 
-## Tips
+## Windows Defender Firewall prompt
+
+On Windows, you might get a **Windows Defender Firewall prompt**.
+This is because this EphemeralMongo starts the `mongod.exe` process from your build output directory, and `mongod.exe` tries to [open an available port](https://github.com/asimmon/ephemeral-mongo/blob/1.0.0/src/EphemeralMongo.Core/MongoRunner.cs#L64).
+
+
+## Optimization tips
 
 Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` processes and make your operating system slower.
 Instead, try to use a single instance and reuse it - create as many databases as you need, one per test for example.
