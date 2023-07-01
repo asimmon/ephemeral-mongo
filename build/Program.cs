@@ -405,16 +405,19 @@ public sealed class TestTask : FrostingTask<BuildContext>
 
             foreach (var packageName in packageNames)
             {
+                context.Log.Information($"=============== Add package {packageName}    ===============");
                 context.DotNetAddPackage(Constants.TestProjectPath, packageName, version: packageVersion, preRelease: true);
 
                 try
                 {
+                    context.Log.Information($"=============== Dotnet restore {packageName} ===============");
                     context.DotNetRestore(Constants.TestProjectPath, new DotNetRestoreSettings
                     {
                         Force = true,
                         NoCache = true,
                     });
 
+                    context.Log.Information($"=============== Dotnet build {packageName}   ===============");
                     context.DotNetBuild(Constants.TestProjectPath, new DotNetBuildSettings
                     {
                         Configuration = Constants.Release,
@@ -422,6 +425,7 @@ public sealed class TestTask : FrostingTask<BuildContext>
                         NoLogo = true,
                     });
 
+                    context.Log.Information($"=============== Dotnet test {packageName}    ===============");
                     context.DotNetTest(Constants.TestProjectPath, new DotNetTestSettings
                     {
                         Configuration = Constants.Release,
@@ -433,6 +437,7 @@ public sealed class TestTask : FrostingTask<BuildContext>
                 }
                 finally
                 {
+                    context.Log.Information($"=============== Remove package {packageName} ===============");
                     context.DotNetRemovePackage(Constants.TestProjectPath, packageName);
                 }
             }
