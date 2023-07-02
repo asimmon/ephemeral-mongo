@@ -10,8 +10,8 @@
     <!-- MSBuildThisFileDirectory is equal to <packageDir>/build/ -->
     <Content Include="$(MSBuildThisFileDirectory)..\runtimes\$(_EphemeralMongoRid)\native\mongodb\**\*">
       <Link>runtimes\$(_EphemeralMongoRid)\native\mongodb\%(RecursiveDir)\%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <Visible>false</Visible>
     </Content>
   </ItemGroup>
