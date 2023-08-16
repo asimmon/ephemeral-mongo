@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <MongoVersion>7</MongoVersion>
+    <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
+    <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
+  </PropertyGroup>
+
+  <Import Project="EphemeralMongo.runtime.targets" />
+</Project>
