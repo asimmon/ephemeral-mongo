@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using GSoft.Extensions.Xunit;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -18,8 +20,8 @@ public class MongoRunnerTests : BaseIntegrationTest
     {
         var options = new MongoRunnerOptions
         {
-            StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
-            StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
+            StandardOuputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
             BinaryDirectory = Guid.NewGuid().ToString(),
             AdditionalArguments = "--quiet",
             KillMongoProcessesWhenCurrentProcessExits = true,
@@ -50,8 +52,8 @@ public class MongoRunnerTests : BaseIntegrationTest
         var options = new MongoRunnerOptions
         {
             UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
-            StandardOuputLogger = x => this.Logger.LogInformation("{X}", x),
-            StandardErrorLogger = x => this.Logger.LogInformation("{X}", x),
+            StandardOuputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
             AdditionalArguments = "--quiet",
             KillMongoProcessesWhenCurrentProcessExits = true,
         };
@@ -118,6 +120,47 @@ public class MongoRunnerTests : BaseIntegrationTest
         {
             File.Delete(exportedFilePath);
         }
+    }
+
+    private void MongoMessageLogger(string message)
+    {
+        try
+        {
+            var trace = JsonSerializer.Deserialize<MongoTrace>(message);
+
+            if (trace != null && !string.IsNullOrEmpty(trace.Message))
+            {
+                // https://www.mongodb.com/docs/manual/reference/log-messages/#std-label-log-severity-levels
+                var logLevel = trace.Severity switch
+                {
+                    "F" => LogLevel.Critical,
+                    "E" => LogLevel.Error,
+                    "W" => LogLevel.Warning,
+                    _ => LogLevel.Information,
+                };
+
+                const int longestComponentNameLength = 8;
+                this.Logger.Log(logLevel, "{Component} {Message}", trace.Component.PadRight(longestComponentNameLength), trace.Message);
+                return;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        this.Logger.LogInformation("{Message}", message);
+    }
+
+    private sealed class MongoTrace
+    {
+        [JsonPropertyName("s")]
+        public string Severity { get; set; } = string.Empty;
+
+        [JsonPropertyName("c")]
+        public string Component { get; set; } = string.Empty;
+
+        [JsonPropertyName("msg")]
+        public string Message { get; set; } = string.Empty;
     }
 
     private sealed class Person
