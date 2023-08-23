@@ -2,7 +2,7 @@
 
 [![build](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
-**EphemeralMongo** is a set of three NuGet packages wrapping the binaries of **MongoDB 4**, **5**, **6** and **7**.
+**EphemeralMongo** is a set of multiple NuGet packages wrapping the binaries of **MongoDB 4**, **5**, **6** and **7**.
 Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 6 and later**.
 
 The supported operating systems are **Linux**, **macOS** and **Windows** on their **x64 architecture** versions only.
