@@ -104,11 +104,6 @@ Do this:
 <PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
 ```
 
-### About Ubuntu 22.04
-
-The all-in-one packages EphemeralMongo4, 5, 6 and 7 don't work with Ubuntu 22.04.
-This is because OpenSSL 1.1 has been removed from Ubuntu 22.04 and the MongoDB binaries are linked against it.
-
 
 ## Windows Defender Firewall prompt
 
