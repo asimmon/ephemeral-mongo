@@ -2,7 +2,7 @@
 
 [![build](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
-**EphemeralMongo** is a set of three NuGet packages wrapping the binaries of **MongoDB 4**, **5** and **6**.
+**EphemeralMongo** is a set of multiple NuGet packages wrapping the binaries of **MongoDB 4**, **5**, **6** and **7**.
 Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 6 and later**.
 
 The supported operating systems are **Linux**, **macOS** and **Windows** on their **x64 architecture** versions only.
@@ -25,9 +25,10 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.22** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
-| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.18** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
-| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.7** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
+| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.24** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
+| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.20** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
+| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.9** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
+| **EphemeralMongo7** | All-in-one package for **MongoDB 7.0.0** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo7.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo7/) |
 
 
 ## Usage
@@ -85,7 +86,7 @@ using (var runner = MongoRunner.Run(options))
 
 ## Reducing the download size
 
-EphemeralMongo4, 5 and 6 are NuGet *metapackages* that reference dedicated runtime packages for both Linux, macOS and Windows.
+EphemeralMongo4, 5, 6 and 7 are NuGet *metapackages* that reference dedicated runtime packages for both Linux, macOS and Windows.
 As of now, there isn't a way to optimize NuGet package downloads for a specific operating system (see [#2](https://github.com/asimmon/ephemeral-mongo/issues/2)).
 However, one can still avoid referencing the metapackage and directly reference the dependencies instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and less downloads.
 
