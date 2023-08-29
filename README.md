@@ -25,7 +25,7 @@ This project is very much inspired from [Mongo2Go](https://github.com/Mongo2Go/M
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.23** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
+| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.24** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
 | **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.20** on Linux, macOS and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
 | **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.9** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
 | **EphemeralMongo7** | All-in-one package for **MongoDB 7.0.0** on Linux, macOS and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo7.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo7/) |
@@ -103,6 +103,11 @@ Do this:
 <PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
 <PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
 ```
+
+### About Ubuntu 22.04
+
+The all-in-one packages EphemeralMongo4, 5, 6 and 7 don't work with Ubuntu 22.04.
+This is because OpenSSL 1.1 has been removed from Ubuntu 22.04 and the MongoDB binaries are linked against it.
 
 
 ## Windows Defender Firewall prompt
