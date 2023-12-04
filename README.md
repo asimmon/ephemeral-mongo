@@ -74,6 +74,14 @@ using (var runner = MongoRunner.Run(options))
 }
 ```
 
+## Importing
+By default the `mongoimport` command called by `runner.Import("default", "people", "/path/to/default.json");` will expect a single document per JSON file. If you want to import an array of documents into a single collection, you can use the optional `--jsonArray` argument. For example:
+
+```csharp
+runner.Import("default", "people", "/path/to/default.json", "--jsonArray");
+```
+
+The `mongoimport` documentation is available [here](https://docs.mongodb.com/database-tools/mongoimport/).
 
 ## How it works
 
