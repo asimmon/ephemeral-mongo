@@ -121,6 +121,12 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
 {
     private static readonly ProjectInfo[] Projects =
     {
+        // MongoDB 8.x
+        new ProjectInfo("EphemeralMongo8.runtime.win-x64", "windows", "x86_64", "base", 8, "win-x64"),
+        new ProjectInfo("EphemeralMongo8.runtime.osx-x64", "macos", "x86_64", "base", 8, "osx-x64"),
+        new ProjectInfo("EphemeralMongo8.runtime.linux-x64", "ubuntu2004", "x86_64", "targeted", 8, "linux-x64"),
+        new ProjectInfo("EphemeralMongo8.runtime.ubuntu.22.04-x64", "ubuntu2204", "x86_64", "targeted", 8, "ubuntu.22.04-x64"),
+
         // MongoDB 7.x
         new ProjectInfo("EphemeralMongo7.runtime.win-x64", "windows", "x86_64", "base", 7, "win-x64"),
         new ProjectInfo("EphemeralMongo7.runtime.osx-x64", "macos", "x86_64", "base", 7, "osx-x64"),
@@ -406,6 +412,7 @@ public sealed class TestTask : FrostingTask<BuildContext>
                 "EphemeralMongo5",
                 "EphemeralMongo6",
                 "EphemeralMongo7",
+                "EphemeralMongo8",
             };
 
             var packageVersion = File.ReadAllText(Constants.PackageVersionPath);
