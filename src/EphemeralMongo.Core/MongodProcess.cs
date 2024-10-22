@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Globalization;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -83,9 +83,14 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         try
         {
-            var connectionString = string.Format(CultureInfo.InvariantCulture, "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}", this.Options.MongoPort, this.Options.ReplicaSetName);
+            var settings = new MongoClientSettings
+            {
+                Server = new MongoServerAddress("127.0.0.1", this.Options.MongoPort!.Value),
+                ReplicaSetName = this.Options.ReplicaSetName,
+                DirectConnection = true,
+            };
 
-            var client = new MongoClient(connectionString);
+            var client = new MongoClient(settings);
 
             _ = Task.Factory.StartNew(InitializeReplicaSet, new Tuple<MongoRunnerOptions, MongoClient>(this.Options, client), TaskCreationOptions.LongRunning);
 
