@@ -46,8 +46,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.osx
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.osx-arm64.csproj", "{0311783D-0642-4DAD-98B2-508272475670}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo5.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo5.runtime.osx-arm64.csproj", "{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -126,10 +124,6 @@ Global
 		{0311783D-0642-4DAD-98B2-508272475670}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0311783D-0642-4DAD-98B2-508272475670}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{0311783D-0642-4DAD-98B2-508272475670}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E}.Release|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
@@ -145,6 +139,5 @@ Global
 		{0E319BF3-C59F-48B7-8B6B-20F9179C89E8} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{DA46DF1E-ADE6-4066-B074-F40E5345CC89} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{0311783D-0642-4DAD-98B2-508272475670} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{D90C2AC4-57FD-40DA-96DA-4FD9C8228F7E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 	EndGlobalSection
 EndGlobal
