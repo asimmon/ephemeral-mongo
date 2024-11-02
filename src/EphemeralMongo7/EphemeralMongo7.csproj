@@ -15,6 +15,7 @@
     <ProjectReference Include="..\EphemeralMongo.Core\EphemeralMongo.Core.csproj" />
     <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.linux-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
     <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.osx-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
+    <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.osx-arm64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
     <ProjectReference Include="..\EphemeralMongo.Runtimes\EphemeralMongo$(MongoVersion).runtime.win-x64.csproj" IncludeAssets="all" ExcludeAssets="none" PrivateAssets="contentfiles;analyzers" />
   </ItemGroup>
 
