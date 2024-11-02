@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.ubu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.ubuntu.22.04-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.ubuntu.22.04-x64.csproj", "{0E319BF3-C59F-48B7-8B6B-20F9179C89E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo4.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo4.runtime.osx-arm64.csproj", "{E579CDC0-6F10-4489-8280-B8DC76F8295A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -136,6 +138,10 @@ Global
 		{0E319BF3-C59F-48B7-8B6B-20F9179C89E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E319BF3-C59F-48B7-8B6B-20F9179C89E8}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{0E319BF3-C59F-48B7-8B6B-20F9179C89E8}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{E579CDC0-6F10-4489-8280-B8DC76F8295A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E579CDC0-6F10-4489-8280-B8DC76F8295A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E579CDC0-6F10-4489-8280-B8DC76F8295A}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{E579CDC0-6F10-4489-8280-B8DC76F8295A}.Release|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
@@ -152,5 +158,6 @@ Global
 		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{72697062-45A5-4E4E-B0F7-E76C8E01A49D} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{0E319BF3-C59F-48B7-8B6B-20F9179C89E8} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
+		{E579CDC0-6F10-4489-8280-B8DC76F8295A} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 	EndGlobalSection
 EndGlobal
