@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <MongoVersion>7</MongoVersion>
-    <FullMongoVersion>7.0.15</FullMongoVersion>
+    <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
     <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
   </PropertyGroup>
 
