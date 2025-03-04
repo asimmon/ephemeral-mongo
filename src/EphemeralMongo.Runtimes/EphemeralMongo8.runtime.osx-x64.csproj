@@ -1,6 +1,6 @@
 <Project ToolsVersion="Current">
   <PropertyGroup>
-    <MongoVersion>5</MongoVersion>
+    <MongoVersion>8</MongoVersion>
     <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
     <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
   </PropertyGroup>
