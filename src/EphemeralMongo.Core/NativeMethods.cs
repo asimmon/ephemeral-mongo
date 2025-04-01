@@ -10,7 +10,7 @@ namespace EphemeralMongo;
 
 internal static class NativeMethods
 {
-    private static readonly object _createJobObjectLock = new object();
+    private static readonly object CreateJobObjectLock = new object();
     private static SafeFileHandle? _jobObjectHandle;
 
     public static void EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled()
@@ -46,7 +46,7 @@ internal static class NativeMethods
             return;
         }
 
-        lock (_createJobObjectLock)
+        lock (CreateJobObjectLock)
         {
             if (_jobObjectHandle != null)
             {

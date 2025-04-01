@@ -14,18 +14,18 @@ EphemeralMongo.MongoRunnerOptions.ConnectionTimeout.get -> System.TimeSpan
 EphemeralMongo.MongoRunnerOptions.ConnectionTimeout.set -> void
 EphemeralMongo.MongoRunnerOptions.DataDirectory.get -> string?
 EphemeralMongo.MongoRunnerOptions.DataDirectory.set -> void
+EphemeralMongo.MongoRunnerOptions.DataDirectoryLifetime.get -> System.TimeSpan?
+EphemeralMongo.MongoRunnerOptions.DataDirectoryLifetime.set -> void
 EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions() -> void
 EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions(EphemeralMongo.MongoRunnerOptions! options) -> void
 EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan
 EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.set -> void
 EphemeralMongo.MongoRunnerOptions.StandardErrorLogger.get -> EphemeralMongo.Logger?
 EphemeralMongo.MongoRunnerOptions.StandardErrorLogger.set -> void
-EphemeralMongo.MongoRunnerOptions.StandardOuputLogger.get -> EphemeralMongo.Logger?
-EphemeralMongo.MongoRunnerOptions.StandardOuputLogger.set -> void
+EphemeralMongo.MongoRunnerOptions.StandardOutputLogger.get -> EphemeralMongo.Logger?
+EphemeralMongo.MongoRunnerOptions.StandardOutputLogger.set -> void
 EphemeralMongo.MongoRunnerOptions.UseSingleNodeReplicaSet.get -> bool
 EphemeralMongo.MongoRunnerOptions.UseSingleNodeReplicaSet.set -> void
 EphemeralMongo.MongoRunnerOptions.MongoPort.get -> int?
 EphemeralMongo.MongoRunnerOptions.MongoPort.set -> void
-EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.get -> bool
-EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.set -> void
 static EphemeralMongo.MongoRunner.Run(EphemeralMongo.MongoRunnerOptions? options = null) -> EphemeralMongo.IMongoRunner!

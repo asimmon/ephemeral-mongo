@@ -8,5 +8,9 @@ internal interface IFileSystem
 
     void DeleteFile(string path);
 
+    string[] GetDirectories(string path, string searchPattern, SearchOption searchOption);
+
+    DateTime GetDirectoryCreationTimeUtc(string path);
+
     void MakeFileExecutable(string path);
 }

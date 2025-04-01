@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GSoft.Extensions.Xunit;
+using Workleap.Extensions.Xunit;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Xunit;
@@ -20,11 +20,10 @@ public class MongoRunnerTests : BaseIntegrationTest
     {
         var options = new MongoRunnerOptions
         {
-            StandardOuputLogger = this.MongoMessageLogger,
+            StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
             BinaryDirectory = Guid.NewGuid().ToString(),
             AdditionalArguments = "--quiet",
-            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         IMongoRunner? runner = null;
@@ -41,6 +40,62 @@ public class MongoRunnerTests : BaseIntegrationTest
         }
     }
 
+    [Fact]
+    public async Task Run_Cleans_Up_Temporary_Data_Directory()
+    {
+        var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo-data-cleanup-tests");
+
+        try
+        {
+            // Start with a clean slate
+            Directory.Delete(rootDataDirectoryPath, recursive: true);
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+
+        var options = new MongoRunnerOptions
+        {
+            StandardOutputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
+            RootDataDirectoryPath = rootDataDirectoryPath,
+            AdditionalArguments = "--quiet",
+        };
+
+        this.Logger.LogInformation("Root data directory path: {Path}", options.RootDataDirectoryPath);
+        Assert.False(Directory.Exists(options.RootDataDirectoryPath), "The root data directory should not exist yet.");
+
+        // Creating a first data directory
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        // Creating another data directory
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        // Assert there's now two data directories
+        var dataDirectories = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+        this.Logger.LogInformation("Data directories: {Directories}", string.Join(", ", dataDirectories));
+        Assert.Equal(2, dataDirectories.Count);
+
+        // Shorten the lifetime of the data directories and wait for a longer time
+        options.DataDirectoryLifetime = TimeSpan.FromSeconds(1);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // This should delete the old data directories and create a new one
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        var dataDirectoriesAfterCleanup = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+        this.Logger.LogInformation("Data directories after cleanup: {Directories}", string.Join(", ", dataDirectoriesAfterCleanup));
+
+        var thirdDataDirectory = Assert.Single(dataDirectoriesAfterCleanup);
+        Assert.DoesNotContain(thirdDataDirectory, dataDirectories);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -52,10 +107,9 @@ public class MongoRunnerTests : BaseIntegrationTest
         var options = new MongoRunnerOptions
         {
             UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
-            StandardOuputLogger = this.MongoMessageLogger,
+            StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
             AdditionalArguments = "--quiet",
-            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         using (var runner = MongoRunner.Run(options))

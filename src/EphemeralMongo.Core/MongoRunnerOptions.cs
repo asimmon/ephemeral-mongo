@@ -7,6 +7,7 @@ public sealed class MongoRunnerOptions
     private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(30);
     private TimeSpan _replicaSetSetupTimeout = TimeSpan.FromSeconds(10);
     private int? _mongoPort;
+    private TimeSpan _dataDirectoryLifetime = TimeSpan.FromHours(12);
 
     public MongoRunnerOptions()
     {
@@ -24,13 +25,14 @@ public sealed class MongoRunnerOptions
         this._connectionTimeout = options._connectionTimeout;
         this._replicaSetSetupTimeout = options._replicaSetSetupTimeout;
         this._mongoPort = options._mongoPort;
+        this._dataDirectoryLifetime = options._dataDirectoryLifetime;
 
         this.AdditionalArguments = options.AdditionalArguments;
         this.UseSingleNodeReplicaSet = options.UseSingleNodeReplicaSet;
-        this.StandardOuputLogger = options.StandardOuputLogger;
+        this.StandardOutputLogger = options.StandardOutputLogger;
         this.StandardErrorLogger = options.StandardErrorLogger;
         this.ReplicaSetName = options.ReplicaSetName;
-        this.KillMongoProcessesWhenCurrentProcessExits = options.KillMongoProcessesWhenCurrentProcessExits;
+        this.RootDataDirectoryPath = options.RootDataDirectoryPath;
     }
 
     /// <summary>
@@ -88,7 +90,17 @@ public sealed class MongoRunnerOptions
     /// <summary>
     /// A delegate that provides access to any MongodDB-related process standard output.
     /// </summary>
-    public Logger? StandardOuputLogger { get; set; }
+    [Obsolete("This property is deprecated and will be removed in a future version. Use StandardOutputLogger instead.")]
+    public Logger? StandardOuputLogger
+    {
+        get => this.StandardOutputLogger;
+        set => this.StandardOutputLogger = value;
+    }
+
+    /// <summary>
+    /// A delegate that provides access to any MongodDB-related process standard output.
+    /// </summary>
+    public Logger? StandardOutputLogger { get; set; }
 
     /// <summary>
     /// A delegate that provides access to any MongodDB-related process error output.
@@ -106,14 +118,29 @@ public sealed class MongoRunnerOptions
     }
 
     /// <summary>
-    /// EXPERIMENTAL - Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
     /// Ensures that all MongoDB child processes are killed when the current process is prematurely killed,
     /// for instance when killed from the task manager or the IDE unit tests window.
+    /// Only works on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
     /// </summary>
+    [Obsolete("This feature is now always enabled on Windows. This property will be removed in a future version.")]
     public bool KillMongoProcessesWhenCurrentProcessExits { get; set; }
+
+    /// <summary>
+    /// The lifetime of data directories that are automatically created when they are not specified by the user.
+    /// When their age exceeds this value, they will be deleted on the next run of MongoRunner.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The lifetime cannot be negative.</exception>
+    public TimeSpan? DataDirectoryLifetime
+    {
+        get => this._dataDirectoryLifetime;
+        set => this._dataDirectoryLifetime = value is not null && value >= TimeSpan.Zero ? value.Value : throw new ArgumentOutOfRangeException(nameof(this.DataDirectoryLifetime));
+    }
 
     // Internal properties start here
     internal string ReplicaSetName { get; set; } = "singleNodeReplSet";
+
+    // Useful for testing data directories cleanup
+    internal string? RootDataDirectoryPath { get; set; }
 
     private static Exception? CheckDirectoryPathFormat(string? path)
     {
