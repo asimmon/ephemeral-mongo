@@ -111,7 +111,7 @@ public sealed class GitVersionTask : FrostingTask<BuildContext>
         context.AddMSBuildSetting("RepositoryBranch", gitVersion.BranchName, log: true);
         context.AddMSBuildSetting("RepositoryCommit", gitVersion.Sha, log: true);
 
-        File.WriteAllTextAsync(Constants.PackageVersionPath, gitVersion.SemVer);
+        File.WriteAllText(Constants.PackageVersionPath, gitVersion.SemVer);
     }
 }
 
