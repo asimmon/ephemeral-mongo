@@ -8,8 +8,8 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <PackageReference Include="Cake.Compression" Version="0.3.0" />
     <PackageReference Include="Cake.Frosting" Version="5.0.0" />
     <PackageReference Include="CliWrap" Version="3.8.2" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.3" />
   </ItemGroup>
 </Project>

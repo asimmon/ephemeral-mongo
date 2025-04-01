@@ -97,9 +97,9 @@ public sealed class CleanTask : FrostingTask<BuildContext>
 
 [TaskName("GitVersion")]
 [IsDependentOn(typeof(CleanTask))]
-public sealed class GitVersionTask : AsyncFrostingTask<BuildContext>
+public sealed class GitVersionTask : FrostingTask<BuildContext>
 {
-    public override async Task RunAsync(BuildContext context)
+    public override void Run(BuildContext context)
     {
         var gitVersion = context.GitVersion();
 
@@ -111,7 +111,7 @@ public sealed class GitVersionTask : AsyncFrostingTask<BuildContext>
         context.AddMSBuildSetting("RepositoryBranch", gitVersion.BranchName, log: true);
         context.AddMSBuildSetting("RepositoryCommit", gitVersion.Sha, log: true);
 
-        await File.WriteAllTextAsync(Constants.PackageVersionPath, gitVersion.SemVer);
+        File.WriteAllTextAsync(Constants.PackageVersionPath, gitVersion.SemVer);
     }
 }
 
@@ -321,7 +321,7 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
 
     private static async Task<FilePath> DownloadFileAsync(string projectName, string url)
     {
-        var downloadDirPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "build", projectName, "downloads");
+        var downloadDirPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "build", "downloads", projectName);
         Directory.CreateDirectory(downloadDirPath);
 
         var filePath = Path.Combine(downloadDirPath, Path.GetFileName(url));
@@ -389,7 +389,6 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
         }
         else if (archiveUrl.EndsWith(".tgz"))
         {
-            // System.Formats.Tar.TarFile throws on macOS archives
             await Cli.Wrap("tar")
                 .WithArguments(["-xzf", archiveFilePath, "-C", uncompressDirPath])
                 .WithStandardOutputPipe(PipeTarget.ToDelegate(context.Log.Information))
