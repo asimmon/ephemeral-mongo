@@ -95,6 +95,8 @@ public sealed class MongoRunner
         }
     }
 
+    private static int _ongoingRootDataDirectoryCleanupCount;
+
     private void CleanupOldDataDirectories()
     {
         if (this._options.DataDirectory != null)
@@ -103,31 +105,44 @@ public sealed class MongoRunner
             return;
         }
 
-        string[] dataDirectoryPaths;
         try
         {
-            dataDirectoryPaths = this._fileSystem.GetDirectories(this._options.RootDataDirectoryPath!, "*", SearchOption.TopDirectoryOnly);
-        }
-        catch (Exception ex)
-        {
-            this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
-            return;
-        }
+            var isCleanupOngoing = Interlocked.Increment(ref _ongoingRootDataDirectoryCleanupCount) > 1;
+            if (isCleanupOngoing)
+            {
+                return;
+            }
 
-        foreach (var dataDirectoryPath in dataDirectoryPaths)
-        {
+            string[] dataDirectoryPaths;
             try
             {
-                var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
-                if (dataDirectoryAge >= this._options.DataDirectoryLifetime)
-                {
-                    this._fileSystem.DeleteDirectory(dataDirectoryPath);
-                }
+                dataDirectoryPaths = this._fileSystem.GetDirectories(this._options.RootDataDirectoryPath!, "*", SearchOption.TopDirectoryOnly);
             }
             catch (Exception ex)
             {
-                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to delete old data directory '{dataDirectoryPath}': {ex.Message}");
+                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
+                return;
             }
+
+            foreach (var dataDirectoryPath in dataDirectoryPaths)
+            {
+                try
+                {
+                    var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
+                    if (dataDirectoryAge >= this._options.DataDirectoryLifetime)
+                    {
+                        this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to delete old data directory '{dataDirectoryPath}': {ex.Message}");
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _ongoingRootDataDirectoryCleanupCount);
         }
     }
 

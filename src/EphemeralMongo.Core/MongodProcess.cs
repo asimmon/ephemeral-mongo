@@ -74,12 +74,12 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         void OnClusterDescriptionChanged(ClusterDescriptionChangedEvent evt)
         {
-            if (evt.NewDescription.Servers.Any(x => x.Type == ServerType.ReplicaSetPrimary && x.State == ServerState.Connected))
+            if (!isReplicaSetReadyMre.IsSet && evt.NewDescription.Servers.Any(x => x.Type == ServerType.ReplicaSetPrimary && x.State == ServerState.Connected))
             {
                 isReplicaSetReadyMre.Set();
             }
 
-            if (evt.NewDescription.Servers.Any(x => x.State == ServerState.Connected && x.IsDataBearing))
+            if (!isTransactionReadyMre.IsSet && evt.NewDescription.Servers.Any(x => x.State == ServerState.Connected && x.IsDataBearing))
             {
                 isTransactionReadyMre.Set();
             }
@@ -164,7 +164,7 @@ internal sealed class MongodProcess : BaseMongoProcess
         }
         catch (TimeoutException)
         {
-            // we threw them
+            throw;
         }
         catch (Exception ex)
         {
