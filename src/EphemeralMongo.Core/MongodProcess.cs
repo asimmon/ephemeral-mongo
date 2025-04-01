@@ -2,6 +2,7 @@
 using System.Globalization;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MongoDB.Driver.Core.Events;
 using MongoDB.Driver.Core.Servers;
 
 namespace EphemeralMongo;
@@ -9,7 +10,6 @@ namespace EphemeralMongo;
 internal sealed class MongodProcess : BaseMongoProcess
 {
     private const string ConnectionReadySentence = "waiting for connections";
-    private const string ReplicaSetReadySentence = "transition to primary complete; database writes are now permitted";
 
     public MongodProcess(MongoRunnerOptions options, string executablePath, string arguments)
         : base(options, executablePath, arguments)
@@ -68,29 +68,75 @@ internal sealed class MongodProcess : BaseMongoProcess
 
     private void ConfigureAndWaitForReplicaSetReadiness()
     {
+        using var cts = new CancellationTokenSource();
         using var isReplicaSetReadyMre = new ManualResetEventSlim();
+        using var isTransactionReadyMre = new ManualResetEventSlim();
 
-        void OnOutputDataReceivedForReplicaSetReadiness(object sender, DataReceivedEventArgs args)
+        void OnClusterDescriptionChanged(ClusterDescriptionChangedEvent evt)
         {
-            var isReplicaSetReady = args.Data != null && args.Data.IndexOf(ReplicaSetReadySentence, StringComparison.OrdinalIgnoreCase) >= 0;
-            if (isReplicaSetReady && !isReplicaSetReadyMre.IsSet)
+            if (evt.NewDescription.Servers.Any(x => x.Type == ServerType.ReplicaSetPrimary && x.State == ServerState.Connected))
             {
                 isReplicaSetReadyMre.Set();
             }
-        }
 
-        this.Process.OutputDataReceived += OnOutputDataReceivedForReplicaSetReadiness;
+            if (evt.NewDescription.Servers.Any(x => x.State == ServerState.Connected && x.IsDataBearing))
+            {
+                isTransactionReadyMre.Set();
+            }
+        }
 
         try
         {
-            var connectionString = string.Format(CultureInfo.InvariantCulture, "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}", this.Options.MongoPort, this.Options.ReplicaSetName);
+            var settings = new MongoClientSettings
+            {
+                Server = new MongoServerAddress("127.0.0.1", this.Options.MongoPort!.Value),
+                ReplicaSetName = this.Options.ReplicaSetName,
+                DirectConnection = true,
+                ClusterConfigurator = builder =>
+                {
+                    builder.Subscribe<ClusterDescriptionChangedEvent>(OnClusterDescriptionChanged);
+                }
+            };
 
-            var client = new MongoClient(connectionString);
+            var client = new MongoClient(settings);
+            var admin = client.GetDatabase("admin");
 
-            _ = Task.Factory.StartNew(InitializeReplicaSet, new Tuple<MongoRunnerOptions, MongoClient>(this.Options, client), TaskCreationOptions.LongRunning);
+            var replConfig = new BsonDocument(new List<BsonElement>
+            {
+                new BsonElement("_id", this.Options.ReplicaSetName),
+                new BsonElement("members", new BsonArray
+                {
+                    new BsonDocument
+                    {
+                        { "_id", 0 },
+                        { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", this.Options.MongoPort) }
+                    },
+                }),
+            });
 
-            var isReplicaSetReady = isReplicaSetReadyMre.Wait(this.Options.ReplicaSetSetupTimeout);
-            if (!isReplicaSetReady)
+            var command = new BsonDocument("replSetInitiate", replConfig);
+            cts.CancelAfter(this.Options.ReplicaSetSetupTimeout);
+
+            try
+            {
+                admin.RunCommand<BsonDocument>(command, cancellationToken: cts.Token);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+                var timeoutMessage = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Replica set initialization command took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
+                    this.Options.ReplicaSetSetupTimeout.TotalSeconds,
+                    nameof(this.Options.ReplicaSetSetupTimeout));
+
+                throw new TimeoutException(timeoutMessage);
+            }
+
+            try
+            {
+                isReplicaSetReadyMre.Wait(cts.Token);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
                 var timeoutMessage = string.Format(
                     CultureInfo.InvariantCulture,
@@ -101,11 +147,11 @@ internal sealed class MongodProcess : BaseMongoProcess
                 throw new TimeoutException(timeoutMessage);
             }
 
-            var isTransactionReady = SpinWait.SpinUntil(
-                () => client.Cluster.Description.Servers.Any(x => x.State == ServerState.Connected && x.IsDataBearing),
-                this.Options.ReplicaSetSetupTimeout);
-
-            if (!isTransactionReady)
+            try
+            {
+                isTransactionReadyMre.Wait(cts.Token);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
                 var timeoutMessage = string.Format(
                     CultureInfo.InvariantCulture,
@@ -116,46 +162,14 @@ internal sealed class MongodProcess : BaseMongoProcess
                 throw new TimeoutException(timeoutMessage);
             }
         }
-        finally
-        {
-            this.Process.OutputDataReceived -= OnOutputDataReceivedForReplicaSetReadiness;
-        }
-    }
-
-    private static void InitializeReplicaSet(object state)
-    {
-        var (options, client) = (Tuple<MongoRunnerOptions, MongoClient>)state;
-
-        try
-        {
-            var admin = client.GetDatabase("admin");
-
-            var replConfig = new BsonDocument(new List<BsonElement>
-            {
-                new BsonElement("_id", options.ReplicaSetName),
-                new BsonElement("members", new BsonArray
-                {
-                    new BsonDocument { { "_id", 0 }, { "host", string.Format(CultureInfo.InvariantCulture, "127.0.0.1:{0}", options.MongoPort) } },
-                }),
-            });
-
-            using (var cts = new CancellationTokenSource(options.ReplicaSetSetupTimeout))
-            {
-                var command = new BsonDocument("replSetInitiate", replConfig);
-                admin.RunCommand<BsonDocument>(command, cancellationToken: cts.Token);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // ignored
-        }
         catch (TimeoutException)
         {
-            // ignored
+            // we threw them
         }
         catch (Exception ex)
         {
-            options.StandardErrorLogger?.Invoke("An error occurred while initializing the replica set: " + ex);
+            this.Options.StandardErrorLogger?.Invoke("An error occurred while initializing the replica set: " + ex);
+            throw;
         }
     }
 }

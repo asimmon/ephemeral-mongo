@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <MongoVersion>5</MongoVersion>
+    <MongoVersion>8</MongoVersion>
     <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
     <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
     <TargetFramework>netstandard2.0</TargetFramework>

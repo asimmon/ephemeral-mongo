@@ -20,6 +20,16 @@ internal sealed class FileSystem : IFileSystem
         File.Delete(path);
     }
 
+    public string[] GetDirectories(string path, string searchPattern, SearchOption searchOption)
+    {
+        return Directory.GetDirectories(path, searchPattern, searchOption);
+    }
+
+    public DateTime GetDirectoryCreationTimeUtc(string path)
+    {
+        return Directory.GetCreationTimeUtc(path);
+    }
+
     public void MakeFileExecutable(string path)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

@@ -40,7 +40,7 @@ Use the static `MongoRunner.Run()` method to create a disposable instance that p
 var options = new MongoRunnerOptions
 {
     UseSingleNodeReplicaSet = true, // Default: false
-    StandardOuputLogger = line => Console.WriteLine(line), // Default: null
+    StandardOutputLogger = line => Console.WriteLine(line), // Default: null
     StandardErrorLogger = line => Console.WriteLine(line), // Default: null
     DataDirectory = "/path/to/data/", // Default: null
     BinaryDirectory = "/path/to/mongo/bin/", // Default: null

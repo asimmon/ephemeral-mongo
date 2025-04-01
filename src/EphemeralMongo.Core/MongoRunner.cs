@@ -9,7 +9,10 @@ namespace EphemeralMongo;
 
 public sealed class MongoRunner
 {
+    private static readonly string DefaultRootDataDirectory = Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
+
     private readonly IFileSystem _fileSystem;
+    private readonly ITimeProvider _timeProvider;
     private readonly IPortFactory _portFactory;
     private readonly IMongoExecutableLocator _executableLocator;
     private readonly IMongoProcessFactory _processFactory;
@@ -18,19 +21,19 @@ public sealed class MongoRunner
     private IMongoProcess? _process;
     private string? _dataDirectory;
 
-    private MongoRunner(IFileSystem fileSystem, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions options)
+    private MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
     {
         this._fileSystem = fileSystem;
+        this._timeProvider = timeProvider;
         this._portFactory = portFactory;
         this._executableLocator = executableLocator;
         this._processFactory = processFactory;
-        this._options = options;
+        this._options = options == null ? new MongoRunnerOptions() : new MongoRunnerOptions(options);
     }
 
     public static IMongoRunner Run(MongoRunnerOptions? options = null)
     {
-        var optionsCopy = options == null ? new MongoRunnerOptions() : new MongoRunnerOptions(options);
-        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), optionsCopy);
+        var runner = new MongoRunner(new FileSystem(), new TimeProvider(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), options);
         return runner.RunInternal();
     }
 
@@ -43,7 +46,16 @@ public sealed class MongoRunner
             this._fileSystem.MakeFileExecutable(executablePath);
 
             // Ensure data directory exists...
-            this._dataDirectory = this._options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            if (this._options.DataDirectory != null)
+            {
+                this._dataDirectory = this._options.DataDirectory;
+            }
+            else
+            {
+                this._options.RootDataDirectoryPath ??= DefaultRootDataDirectory;
+                this._dataDirectory = Path.Combine(this._options.RootDataDirectoryPath, Path.GetRandomFileName());
+            }
+
             this._fileSystem.CreateDirectory(this._dataDirectory);
 
             try
@@ -58,6 +70,8 @@ public sealed class MongoRunner
                 // Ignored - this data directory might already be in use, we'll see later how mongod reacts
             }
 
+            this.CleanupOldDataDirectories();
+
             this._options.MongoPort ??= this._portFactory.GetRandomAvailablePort();
 
             // Build MongoDB executable arguments
@@ -69,7 +83,7 @@ public sealed class MongoRunner
             this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, arguments);
             this._process.Start();
 
-            var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?connect=direct&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
+            var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?directConnection=true&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
             var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
 
             return new StartedMongoRunner(this, connectionString);
@@ -78,6 +92,42 @@ public sealed class MongoRunner
         {
             this.Dispose(throwOnException: false);
             throw;
+        }
+    }
+
+    private void CleanupOldDataDirectories()
+    {
+        if (this._options.DataDirectory != null)
+        {
+            // Data directory was set by user, do not trigger cleanup
+            return;
+        }
+
+        string[] dataDirectoryPaths;
+        try
+        {
+            dataDirectoryPaths = this._fileSystem.GetDirectories(this._options.RootDataDirectoryPath!, "*", SearchOption.TopDirectoryOnly);
+        }
+        catch (Exception ex)
+        {
+            this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
+            return;
+        }
+
+        foreach (var dataDirectoryPath in dataDirectoryPaths)
+        {
+            try
+            {
+                var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
+                if (dataDirectoryAge >= this._options.DataDirectoryLifetime)
+                {
+                    this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to delete old data directory '{dataDirectoryPath}': {ex.Message}");
+            }
         }
     }
 
@@ -96,8 +146,8 @@ public sealed class MongoRunner
 
         try
         {
-            // Do not dispose data directory if it was a user input
-            if (this._dataDirectory != null && this._options.DataDirectory == null)
+            // Do not dispose data directory if set from user input or the root data directory path was set for tests
+            if (this._dataDirectory != null && this._options.DataDirectory == null && this._options.RootDataDirectoryPath == DefaultRootDataDirectory)
             {
                 this._fileSystem.DeleteDirectory(this._dataDirectory);
             }
@@ -240,7 +290,7 @@ public sealed class MongoRunner
             }
             catch (MongoConnectionException)
             {
-                // FYI this is the expected behavior as mongod is shutting down
+                // This is the expected behavior as mongod is shutting down
             }
             catch
             {

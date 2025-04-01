@@ -8,10 +8,7 @@ internal abstract class BaseMongoProcess : IMongoProcess
     {
         this.Options = options;
 
-        if (options.KillMongoProcessesWhenCurrentProcessExits)
-        {
-            NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
-        }
+        NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
 
         var processStartInfo = new ProcessStartInfo
         {
@@ -38,9 +35,9 @@ internal abstract class BaseMongoProcess : IMongoProcess
 
     private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
     {
-        if (this.Options.StandardOuputLogger != null && args.Data != null)
+        if (this.Options.StandardOutputLogger != null && args.Data != null)
         {
-            this.Options.StandardOuputLogger(args.Data);
+            this.Options.StandardOutputLogger(args.Data);
         }
     }
 
