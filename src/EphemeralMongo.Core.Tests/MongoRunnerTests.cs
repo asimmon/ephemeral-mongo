@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Workleap.Extensions.Xunit;
@@ -238,7 +239,9 @@ public class MongoRunnerTests : BaseIntegrationTest
             return this.Id == other.Id && this.Name == other.Name;
         }
 
+#pragma warning disable CS0659 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
         public override bool Equals(object? obj)
+#pragma warning restore CS0659 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
         {
             return ReferenceEquals(this, obj) || (obj is Person other && this.Equals(other));
         }

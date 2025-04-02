@@ -39,7 +39,7 @@ public sealed class MongoRunnerOptions
     /// The directory where the mongod instance stores its data. If not specified, a temporary directory will be used.
     /// </summary>
     /// <exception cref="ArgumentException">The path is invalid.</exception>
-    /// <seealso cref="https://www.mongodb.com/docs/manual/reference/program/mongod/#std-option-mongod.--dbpath"/>
+    /// <seealso href="https://www.mongodb.com/docs/manual/reference/program/mongod/#std-option-mongod.--dbpath"/>
     public string? DataDirectory
     {
         get => this._dataDirectory;
@@ -59,7 +59,7 @@ public sealed class MongoRunnerOptions
     /// <summary>
     /// Additional mongod CLI arguments.
     /// </summary>
-    /// <seealso cref="https://www.mongodb.com/docs/manual/reference/program/mongod/#options"/>
+    /// <seealso href="https://www.mongodb.com/docs/manual/reference/program/mongod/#options"/>
     public string? AdditionalArguments { get; set; }
 
     /// <summary>

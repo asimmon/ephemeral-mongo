@@ -1,17 +1,54 @@
+# Partially copied from the .NET runtime repository:
+# https://github.com/dotnet/runtime/blob/v8.0.0/.editorconfig
+
+root = true
+
+# Default settings:
+# A newline ending every file
+# Use 4 spaces as indentation
 [*]
+insert_final_newline = true
 indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
 charset = utf-8
 
-[*.{csproj,yml,yaml,conf,targets}]
+# Xml project files
+[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,nativeproj,locproj}]
+indent_size = 2
+ij_xml_space_inside_empty_tag = true
+
+# Xml files
+[*.{xml,stylecop,resx,ruleset}]
+indent_size = 2
+ij_xml_space_inside_empty_tag = true
+
+# Xml config files
+[*.{props,targets,config,nuspec,conf}]
+indent_size = 2
+ij_xml_space_inside_empty_tag = true
+
+# YAML config files
+[*.{yml,yaml}]
 indent_size = 2
 
-[Directory.Build.props]
+# Shell scripts
+[*.{sh,ps1,psm1}]
+end_of_line = lf
 indent_size = 2
 
-[*.{css,scss,js,ps1}]
-indent_size = 4
+[*.{cmd,bat}]
+end_of_line = crlf
+indent_size = 2
 
-[*.cs]
-indent_size = 4
-tab_width = 4
-max_line_length = off
+# JSON
+[*.{json,json5,jsonc}]
+indent_size = 2
+
+# JavaScript and TypeScript
+[*.{js,ts,jsx,tsx}]
+indent_size = 2
+
+# CSS, SCSS and LESS
+[*.{css,scss,less}]
+indent_size = 2
