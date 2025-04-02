@@ -3,32 +3,24 @@
 [![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
 [![publish](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
-**EphemeralMongo** is a set of multiple NuGet packages wrapping the binaries of **MongoDB 4, 5, 6,** and **7**.
-Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 6 and later**.
+**EphemeralMongo** is a set of multiple NuGet packages wrapping the binaries of **MongoDB 6, 7,** and **8**.
+Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 9 and later**.
 
-The supported operating systems are **Linux**, **macOS**, and **Windows** on their **x64 architecture** versions only.
+The supported operating systems are **Linux** (x64), **macOS** (arm64), and **Windows** (x64).
 Each package provides access to:
 
 * Multiple ephemeral and isolated MongoDB databases for running tests,
 * A quick way to set up a MongoDB database for a local development environment,
-* _mongoimport_ and _mongoexport_ tools for exporting and importing collections.
+* _mongoimport_ and _mongoexport_ tools for exporting and importing collections,
+* Support for **single-node replica sets**, enabling transactions and change streams.
 
-This project is very much inspired by [Mongo2Go](https://github.com/Mongo2Go/Mongo2Go) but contains several improvements:
-
-* Support for multiple major MongoDB versions that are copied to your build output,
-* There is a separate NuGet package for each operating system and MongoDB version, so it's easier to support new major versions,
-* The latest MongoDB binaries are safely downloaded and verified by GitHub Actions during the build or release workflow, reducing the Git repository size,
-* There's less chance of memory, file, and directory leaks. The startup is faster by using C# threading primitives such as `ManualResetEventSlim`,
-* The CI tests the generated packages against .NET 4.6.2 and .NET 6 using the latest GitHub build agents for Ubuntu, macOS, and Windows.
-
-## Downloads
+This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/Mongo2Go) and expands upon its foundation.
 
 | Package             | Description                                                           | Link                                                                                                                       |
 |---------------------|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| **EphemeralMongo4** | All-in-one package for **MongoDB 4.4.24** on Linux, macOS, and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo4.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo4/) |
-| **EphemeralMongo5** | All-in-one package for **MongoDB 5.0.20** on Linux, macOS, and Windows | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo5.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo5/) |
-| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.9** on Linux, macOS, and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
-| **EphemeralMongo7** | All-in-one package for **MongoDB 7.0.0** on Linux, macOS, and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo7.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo7/) |
+| **EphemeralMongo6** | All-in-one package for **MongoDB 6.0.21** on Linux, macOS, and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo6.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo6/) |
+| **EphemeralMongo7** | All-in-one package for **MongoDB 7.0.18** on Linux, macOS, and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo7.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo7/) |
+| **EphemeralMongo8** | All-in-one package for **MongoDB 8.0.6** on Linux, macOS, and Windows  | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo8.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo8/) |
 
 ## Usage
 
@@ -78,22 +70,22 @@ using (var runner = MongoRunner.Run(options))
 
 ## Reducing the download size
 
-EphemeralMongo4, 5, 6, and 7 are NuGet *metapackages* that reference dedicated runtime packages for Linux, macOS, and Windows.
+EphemeralMongo6, 7, and 8 are NuGet *metapackages* that reference dedicated runtime packages for Linux, macOS, and Windows.
 As of now, there isn't a way to optimize NuGet package downloads for a specific operating system (see [#2](https://github.com/asimmon/ephemeral-mongo/issues/2)).
 However, one can still avoid referencing the metapackage and directly reference the dependencies instead. Add MSBuild OS platform conditions and you'll get optimized NuGet imports for your OS and fewer downloads.
 
 Instead of doing this:
 
 ```xml
-<PackageReference Include="EphemeralMongo6" Version="1.0.0" />
+<PackageReference Include="EphemeralMongo8" Version="*" />
 ```
 
 Do this:
 ```xml
-<PackageReference Include="EphemeralMongo.Core" Version="1.0.0" />
-<PackageReference Include="EphemeralMongo6.runtime.linux-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
-<PackageReference Include="EphemeralMongo6.runtime.osx-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-<PackageReference Include="EphemeralMongo6.runtime.win-x64" Version="1.0.0" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+<PackageReference Include="EphemeralMongo.Core" Version="*" />
+<PackageReference Include="EphemeralMongo8.runtime.linux-x64" Version="*" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+<PackageReference Include="EphemeralMongo8.runtime.osx-arm64" Version="*" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+<PackageReference Include="EphemeralMongo8.runtime.win-x64" Version="*" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
 ```
 
 ## Windows Defender Firewall prompt
