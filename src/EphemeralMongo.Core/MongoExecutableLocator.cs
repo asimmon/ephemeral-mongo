@@ -36,7 +36,7 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
     {
         [OSPlatform.Windows] = "win-x64",
         [OSPlatform.Linux] = "linux-x64",
-        [OSPlatform.OSX] = "osx-x64",
+        [OSPlatform.OSX] = "osx-arm64",
     };
 
     private static string GetMongoExecutableFileName(Dictionary<OSPlatform, string> mappings) =>
