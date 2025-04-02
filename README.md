@@ -107,11 +107,9 @@ This is because EphemeralMongo starts the `mongod.exe` process from your build o
 ## Optimization tips
 
 Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` processes and make your operating system slower.
-Instead, try to use a single instance and reuse it—create as many databases as you need, one per test, for example.
+Instead, try to use a single instance and reuse it - create as many databases as you need, one per test, for example.
 
 Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d456e0be) for an implementation of a reusable `IMongoRunner`.
-
-Below is the text with only necessary corrections applied:
 
 ## Changelog
 
