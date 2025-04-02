@@ -22,7 +22,7 @@ Each package provides access to:
 
 * Multiple ephemeral and isolated MongoDB databases for running tests,
 * A quick way to set up a MongoDB database for a local development environment,
-* _mongoimport_ and _mongoexport_ tools for exporting and importing collections,
+* _mongoexport_ and _mongoimport_ tools for [exporting](https://www.mongodb.com/docs/database-tools/mongoexport/) and [importing](https://docs.mongodb.com/database-tools/mongoimport/) collections,
 * Support for **single-node replica sets**, enabling transactions and change streams.
 
 This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/Mongo2Go) and expands upon its foundation.
