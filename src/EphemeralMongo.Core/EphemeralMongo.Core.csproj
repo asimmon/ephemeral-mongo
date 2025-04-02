@@ -5,7 +5,6 @@
     <Description>The core library of the .NET wrapper for MongoDB built for .NET Standard 2.0.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <RootNamespace>EphemeralMongo</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
