@@ -217,30 +217,10 @@ public class MongoRunnerTests : BaseIntegrationTest
         public string Message { get; set; } = string.Empty;
     }
 
-    private sealed class Person
+    private sealed record Person(string Id, string Name)
     {
-        public Person()
+        public Person() : this(string.Empty, string.Empty)
         {
-        }
-
-        public Person(string id, string name)
-        {
-            this.Id = id;
-            this.Name = name;
-        }
-
-        public string Id { get; set; } = string.Empty;
-
-        public string Name { get; set; } = string.Empty;
-
-        private bool Equals(Person other)
-        {
-            return this.Id == other.Id && this.Name == other.Name;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return ReferenceEquals(this, obj) || (obj is Person other && this.Equals(other));
         }
     }
 }
