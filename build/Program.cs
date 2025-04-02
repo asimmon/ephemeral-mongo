@@ -522,7 +522,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
             {
                 ApiKey = context.NugetApiKey,
                 Source = context.NugetSource,
-                IgnoreSymbols = false
+                SkipDuplicate = true,
             });
         }
     }
