@@ -1,7 +1,17 @@
+<!-- omit from toc -->
 # EphemeralMongo - temporary and disposable MongoDB for integration tests and local debugging
 
 [![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
 [![publish](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
+
+- [Introduction](#introduction)
+- [Usage](#usage)
+- [How it works](#how-it-works)
+- [Reducing the download size](#reducing-the-download-size)
+- [Windows Defender Firewall prompt](#windows-defender-firewall-prompt)
+- [Optimization tips](#optimization-tips)
+
+## Introduction
 
 **EphemeralMongo** is a set of multiple NuGet packages wrapping the binaries of **MongoDB 6, 7,** and **8**.
 Each package targets **.NET Standard 2.0**, which means you can use it with **.NET Framework 4.5.2** up to **.NET 9 and later**.
@@ -99,3 +109,18 @@ Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` 
 Instead, try to use a single instance and reuse it—create as many databases as you need, one per test, for example.
 
 Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d456e0be) for an implementation of a reusable `IMongoRunner`.
+
+Below is the text with only necessary corrections applied:
+
+## Changelog
+
+### 2.0.0
+
+- **Breaking change**: Support for MongoDB 5.0 and 6.0 has been removed, as their [end-of-life](https://www.mongodb.com/legal/support-policy/lifecycles) has passed.
+- **Breaking change**: arm64 is now the default target for macOS. The previous target was x64.
+- **Breaking change**: The Linux runtime package now uses Ubuntu 22.04's MongoDB binaries instead of the 18.04 ones. OpenSSL 3.0 is now required.
+- **Breaking change**: Updated the MongoDB C# driver to 2.28.0, [which now uses strong-named assemblies](https://www.mongodb.com/community/forums/t/net-driver-2-28-0-released/289745).
+- Added support for MongoDB 8.0.
+- Introduced data directory management to delete old data directories automatically.
+- Use direct connection in replica set connection strings.
+- Fixed the spelling issue in `MongoRunnerOptions.StandardOutputLogger`.
