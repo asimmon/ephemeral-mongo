@@ -10,6 +10,7 @@
 - [Reducing the download size](#reducing-the-download-size)
 - [Windows Defender Firewall prompt](#windows-defender-firewall-prompt)
 - [Optimization tips](#optimization-tips)
+- [Changelog](#changelog)
 
 ## Introduction
 
