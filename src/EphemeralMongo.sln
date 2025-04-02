@@ -14,7 +14,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "runtimes", "runtimes", "{81
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Core", "EphemeralMongo.Core\EphemeralMongo.Core.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.osx-x64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.osx-x64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.osx-arm64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.linux-x64.csproj", "{6D723CAC-6C36-432B-AF82-FED039080D40}"
 EndProject
@@ -26,7 +26,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7", "Ephemera
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.linux-x64.csproj", "{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.osx-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.osx-x64.csproj", "{0772619C-E004-474A-AC00-4974C545C825}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.osx-arm64.csproj", "{0772619C-E004-474A-AC00-4974C545C825}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.win-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.win-x64.csproj", "{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}"
 EndProject
@@ -34,7 +34,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8", "Ephemera
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.linux-x64.csproj", "{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.osx-x64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.osx-x64.csproj", "{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.osx-arm64.csproj", "{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.win-x64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.win-x64.csproj", "{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}"
 EndProject

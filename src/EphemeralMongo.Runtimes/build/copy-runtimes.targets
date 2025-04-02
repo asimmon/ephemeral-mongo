@@ -3,7 +3,7 @@
   <PropertyGroup>
     <_EphemeralMongoRid Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</_EphemeralMongoRid>
     <_EphemeralMongoRid Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</_EphemeralMongoRid>
-    <_EphemeralMongoRid Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx-x64</_EphemeralMongoRid>
+    <_EphemeralMongoRid Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx-arm64</_EphemeralMongoRid>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework.TrimEnd(`0123456789`))' == 'net' Or '$(TargetFrameworkVersion)' != '' ">
