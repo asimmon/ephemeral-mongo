@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace EphemeralMongo.Tests;
