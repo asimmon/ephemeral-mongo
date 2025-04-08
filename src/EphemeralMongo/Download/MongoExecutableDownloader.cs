@@ -14,7 +14,7 @@ internal static class MongoExecutableDownloader
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
     private static readonly string MongoExportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoExportExeFileNameWithoutExt + ".exe" : MongoExportExeFileNameWithoutExt;
 
-    private static readonly string AppDataDirPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ephemeral-mongo");
+    private static readonly string AppDataDirPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ephemeral-mongo");
     private static readonly string TmpDirPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
 
     // The epoch for file time is 1/1/1601 12:00:00 AM
@@ -98,14 +98,27 @@ internal static class MongoExecutableDownloader
                     throw new InvalidOperationException($"There should be only one directory in {tmpUncompressDirPath}, but found {tmpUncompressedFirstDirPath.Length}");
                 }
 
-                var tmpExeFilePath = Path.Combine(tmpUncompressedFirstDirPath[0], "bin", MongodExeFileName);
+                var tmpExeDirPath = Path.Combine(tmpUncompressedFirstDirPath[0], "bin");
+                var tmpExeFilePath = Path.Combine(tmpExeDirPath, MongodExeFileName);
                 if (!File.Exists(tmpExeFilePath))
                 {
                     throw new InvalidOperationException($"The executable file {tmpExeFilePath} could not be copied to {exeFilePath} because it does not exist");
                 }
 
                 Directory.CreateDirectory(exeDirPath);
+
                 File.Copy(tmpExeFilePath, exeFilePath);
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    // On Windows only as of 2025-04-08, the enterprise edition requires additional DLLs
+                    foreach (var tmpDllFilePath in Directory.EnumerateFiles(tmpExeDirPath, "*.dll", SearchOption.TopDirectoryOnly))
+                    {
+                        var dllFilePath = Path.Combine(exeDirPath, Path.GetFileName(tmpDllFilePath));
+                        File.Copy(tmpDllFilePath, dllFilePath);
+                    }
+                }
+
                 UpdateLastCheckFile(lastCheckFilePath);
                 return exeFilePath;
             }

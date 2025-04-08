@@ -93,24 +93,38 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Import_Export_Works(bool useSingleNodeReplicaSet)
+    [InlineData(false, MongoVersion.V6, MongoEdition.Community)]
+    [InlineData(false, MongoVersion.V7, MongoEdition.Community)]
+    [InlineData(false, MongoVersion.V8, MongoEdition.Community)]
+    [InlineData(false, MongoVersion.V6, MongoEdition.Enterprise)]
+    [InlineData(false, MongoVersion.V7, MongoEdition.Enterprise)]
+    [InlineData(false, MongoVersion.V8, MongoEdition.Enterprise)]
+    [InlineData(true, MongoVersion.V6, MongoEdition.Community)]
+    [InlineData(true, MongoVersion.V7, MongoEdition.Community)]
+    [InlineData(true, MongoVersion.V8, MongoEdition.Community)]
+    [InlineData(true, MongoVersion.V6, MongoEdition.Enterprise)]
+    [InlineData(true, MongoVersion.V7, MongoEdition.Enterprise)]
+    [InlineData(true, MongoVersion.V8, MongoEdition.Enterprise)]
+    public async Task Import_Export_Works(bool replset, MongoVersion version, MongoEdition edition)
     {
         const string databaseName = "default";
         const string collectionName = "people";
 
         var options = new MongoRunnerOptions
         {
-            UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
+            Version = version,
+            Edition = edition,
+            UseSingleNodeReplicaSet = replset,
             StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
-            AdditionalArguments = ["--quiet"],
+            AdditionalArguments = edition == MongoEdition.Enterprise
+                ? ["--quiet", "--storageEngine", "inMemory"]
+                : ["--quiet"],
         };
 
         using (var runner = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
         {
-            if (useSingleNodeReplicaSet)
+            if (replset)
             {
                 Assert.Contains("replicaSet", runner.ConnectionString);
             }
