@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-2022, macos-14]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,13 +22,18 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
 
-      - if: matrix.os == 'ubuntu-latest'
+      # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
+      - if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get install -y libcurl4 libgssapi-krb5-2 libldap2 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
+
+      - if: matrix.os == 'ubuntu-24.04'
         run: ./build.ps1
         shell: pwsh
         env:
           NUGET_SOURCE: ${{ secrets.MYGET_SOURCE }}
           NUGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
 
-      - if: matrix.os != 'ubuntu-latest'
+      - if: matrix.os != 'ubuntu-24.04'
         run: ./build.ps1
         shell: pwsh
