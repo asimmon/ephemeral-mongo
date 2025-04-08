@@ -9,7 +9,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <IncludeSymbols>false</IncludeSymbols>
     <PackageTags>MongoDB;Mongo;test;testing;unittest;integrationtest</PackageTags>
   </PropertyGroup>
 
