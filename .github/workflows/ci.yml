@@ -22,6 +22,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
 
+      # MongoDB Enterprise prerequisites for Ubuntu 22.04
       # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
       - if: matrix.os == 'ubuntu-22.04'
         run: |
