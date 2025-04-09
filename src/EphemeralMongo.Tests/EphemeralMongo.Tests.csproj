@@ -20,32 +20,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\EphemeralMongo.Tests\*.cs" />
-    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadArchitectureHelperTests.cs">
-      <Link>DownloadArchitectureHelperTests.cs</Link>
-    </Compile>
-    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadEditionHelperTests.cs">
-      <Link>DownloadEditionHelperTests.cs</Link>
-    </Compile>
-    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadTargetHelperTests.cs">
-      <Link>DownloadTargetHelperTests.cs</Link>
-    </Compile>
-    <Compile Include="..\EphemeralMongo.v2.Tests\MongoRunnerTests.cs">
-      <Link>MongoRunnerTests.cs</Link>
-    </Compile>
-    <Compile Include="..\EphemeralMongo.v2.Tests\ProcessArgumentTests.cs">
-      <Link>ProcessArgumentTests.cs</Link>
-    </Compile>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="..\EphemeralMongo.v2.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
