@@ -225,8 +225,18 @@ internal static class MongoExecutableDownloader
                     throw new InvalidOperationException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
                 }
 
-                File.Copy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
-                File.Copy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
+                if (!File.Exists(mongoImportExeFilePath))
+                {
+                    // Prevent duplicate writes on situations where tests run from multiple assemblies in parallel
+                    File.Copy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
+                }
+
+                if (!File.Exists(mongoExportExeFilePath))
+                {
+                    // Prevent duplicate writes on situations where tests run from multiple assemblies in parallel
+                    File.Copy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
+                }
+
                 UpdateLastCheckFile(lastCheckFilePath);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
