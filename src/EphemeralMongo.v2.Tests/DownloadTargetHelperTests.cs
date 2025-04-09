@@ -150,12 +150,14 @@ public sealed class DownloadTargetHelperTests : IDisposable
         Assert.Equal("ubuntu2204", target);
     }
 
+#if NET9_0_OR_GREATER
     [Fact]
     public void GetTarget_ThrowsPlatformNotSupportedException_WhenOsPlatformIsUnsupported()
     {
         var unsupportedPlatform = OSPlatform.FreeBSD;
         Assert.Throws<PlatformNotSupportedException>(() => this._helper.GetTarget(unsupportedPlatform));
     }
+#endif
 
     private void CreateOsReleaseFile(string? id, string? versionId)
     {

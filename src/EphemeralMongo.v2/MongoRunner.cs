@@ -223,7 +223,7 @@ public sealed class MongoRunner
 
         public string ConnectionString { get; }
 
-        [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
+        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it")]
         public async Task ImportAsync(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
@@ -280,6 +280,7 @@ public sealed class MongoRunner
         }
 
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
+        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it")]
         public async Task ExportAsync(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)

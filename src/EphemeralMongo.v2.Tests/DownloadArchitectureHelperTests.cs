@@ -38,11 +38,13 @@ public sealed class DownloadArchitectureHelperTests
 
     [Theory]
     [InlineData(Architecture.Arm)]
+#if NET9_0_OR_GREATER
     [InlineData(Architecture.Wasm)]
     [InlineData(Architecture.S390x)]
     [InlineData(Architecture.LoongArch64)]
     [InlineData(Architecture.Armv6)]
     [InlineData(Architecture.Ppc64le)]
+#endif
     [InlineData((Architecture)99)] // Some undefined architecture
     public void GetArchitecture_ThrowsPlatformNotSupportedException_ForUnsupportedArchitectures(Architecture architecture)
     {

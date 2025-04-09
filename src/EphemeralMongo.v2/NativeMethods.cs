@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Security;
@@ -8,6 +9,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace EphemeralMongo;
 
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "We ensure this runs on Windows")]
 internal static class NativeMethods
 {
     private static readonly object CreateJobObjectLock = new object();

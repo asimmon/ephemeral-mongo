@@ -38,11 +38,21 @@ public sealed class HttpTransport
             using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
+#if NET8_0_OR_GREATER
+            Stream sourceStream;
+            Stream destinationStream;
+            await using ((sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
+            await using ((destinationStream = File.Create(filePath)).ConfigureAwait(false))
+            {
+                await sourceStream.CopyToAsync(destinationStream, cancellationToken).ConfigureAwait(false);
+            }
+#else
             using var sourceStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             using var destinationStream = File.Create(filePath);
 
             const int defaultBufferSize = 81920;
             await sourceStream.CopyToAsync(destinationStream, defaultBufferSize, cancellationToken).ConfigureAwait(false);
+#endif
         }
         catch (Exception ex)
         {
@@ -58,8 +68,17 @@ public sealed class HttpTransport
             using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            value = await JsonSerializer.DeserializeAsync<TValue>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            Stream stream;
+#if NET8_0_OR_GREATER
+            await using ((stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
+#elif NETSTANDARD2_1_OR_GREATER
+            await using ((stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false))
+#else
+            using (stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+#endif
+            {
+                value = await JsonSerializer.DeserializeAsync<TValue>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {

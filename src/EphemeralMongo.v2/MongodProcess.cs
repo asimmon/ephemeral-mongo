@@ -43,7 +43,7 @@ internal sealed class MongodProcess : BaseMongoProcess
             }
         }
 
-        void OnProcessExited(object sender, EventArgs e)
+        void OnProcessExited(object? sender, EventArgs e)
         {
             var exception = this.Process.ExitCode == 0
                 ? new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly.")
@@ -94,7 +94,7 @@ internal sealed class MongodProcess : BaseMongoProcess
         var isReplicaSetReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var isTransactionReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void OnProcessExited(object sender, EventArgs e)
+        void OnProcessExited(object? sender, EventArgs e)
         {
             var exception = this.Process.ExitCode == 0
                 ? new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly.")

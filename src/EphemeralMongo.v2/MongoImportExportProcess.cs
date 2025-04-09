@@ -7,7 +7,11 @@ internal sealed class MongoImportExportProcess : BaseMongoProcess
     {
     }
 
+#if NET8_0_OR_GREATER
+    public override async Task StartAsync(CancellationToken cancellationToken)
+#else
     public override Task StartAsync(CancellationToken cancellationToken)
+#endif
     {
         this.Process.Start();
 
@@ -15,7 +19,11 @@ internal sealed class MongoImportExportProcess : BaseMongoProcess
         this.Process.BeginErrorReadLine();
 
         // Wait for the end of import or export
+#if NET8_0_OR_GREATER
+        await this.Process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+#else
         this.Process.WaitForExit();
         return Task.CompletedTask;
+#endif
     }
 }

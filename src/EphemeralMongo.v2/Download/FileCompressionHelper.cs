@@ -59,7 +59,7 @@ internal static class FileCompressionHelper
 
                 var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-                void OnProcessExited(object sender, EventArgs args)
+                void OnProcessExited(object? sender, EventArgs args)
                 {
                     var exitCode = process.ExitCode;
                     if (exitCode == 0)
@@ -85,7 +85,11 @@ internal static class FileCompressionHelper
                 {
                     process.Exited -= OnProcessExited;
                     process.Kill();
+#if NET8_0_OR_GREATER
+                    await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+#else
                     process.WaitForExit();
+#endif
                 }
             }
         }
