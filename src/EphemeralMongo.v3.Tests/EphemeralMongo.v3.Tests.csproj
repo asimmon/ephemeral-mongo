@@ -22,10 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\EphemeralMongo.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
+    <Compile Include="..\EphemeralMongo.Tests\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EphemeralMongo.v3\EphemeralMongo.v3.csproj" />
   </ItemGroup>
 </Project>
