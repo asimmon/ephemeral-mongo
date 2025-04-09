@@ -1,0 +1,50 @@
+#nullable enable
+EphemeralMongo.HttpTransport
+EphemeralMongo.HttpTransport.HttpTransport() -> void
+EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpClient! httpClient) -> void
+EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpMessageHandler! handler) -> void
+EphemeralMongo.IMongoRunner
+EphemeralMongo.IMongoRunner.ConnectionString.get -> string!
+EphemeralMongo.IMongoRunner.ExportAsync(string! database, string! collection, string! outputFilePath, string![]? additionalArguments = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EphemeralMongo.IMongoRunner.ImportAsync(string! database, string! collection, string! inputFilePath, string![]? additionalArguments = null, bool drop = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EphemeralMongo.Logger
+EphemeralMongo.MongoEdition
+EphemeralMongo.MongoEdition.Community = 0 -> EphemeralMongo.MongoEdition
+EphemeralMongo.MongoEdition.Enterprise = 1 -> EphemeralMongo.MongoEdition
+EphemeralMongo.MongoRunner
+EphemeralMongo.MongoRunnerOptions
+EphemeralMongo.MongoRunnerOptions.AdditionalArguments.get -> string![]?
+EphemeralMongo.MongoRunnerOptions.AdditionalArguments.set -> void
+EphemeralMongo.MongoRunnerOptions.BinaryDirectory.get -> string?
+EphemeralMongo.MongoRunnerOptions.BinaryDirectory.set -> void
+EphemeralMongo.MongoRunnerOptions.ConnectionTimeout.get -> System.TimeSpan
+EphemeralMongo.MongoRunnerOptions.ConnectionTimeout.set -> void
+EphemeralMongo.MongoRunnerOptions.DataDirectory.get -> string?
+EphemeralMongo.MongoRunnerOptions.DataDirectory.set -> void
+EphemeralMongo.MongoRunnerOptions.DataDirectoryLifetime.get -> System.TimeSpan?
+EphemeralMongo.MongoRunnerOptions.DataDirectoryLifetime.set -> void
+EphemeralMongo.MongoRunnerOptions.Edition.get -> EphemeralMongo.MongoEdition
+EphemeralMongo.MongoRunnerOptions.Edition.set -> void
+EphemeralMongo.MongoRunnerOptions.MongoPort.get -> int?
+EphemeralMongo.MongoRunnerOptions.MongoPort.set -> void
+EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions() -> void
+EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions(EphemeralMongo.MongoRunnerOptions! options) -> void
+EphemeralMongo.MongoRunnerOptions.NewVersionCheckTimeout.get -> System.TimeSpan
+EphemeralMongo.MongoRunnerOptions.NewVersionCheckTimeout.set -> void
+EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan
+EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.set -> void
+EphemeralMongo.MongoRunnerOptions.StandardErrorLogger.get -> EphemeralMongo.Logger?
+EphemeralMongo.MongoRunnerOptions.StandardErrorLogger.set -> void
+EphemeralMongo.MongoRunnerOptions.StandardOutputLogger.get -> EphemeralMongo.Logger?
+EphemeralMongo.MongoRunnerOptions.StandardOutputLogger.set -> void
+EphemeralMongo.MongoRunnerOptions.Transport.get -> EphemeralMongo.HttpTransport!
+EphemeralMongo.MongoRunnerOptions.Transport.set -> void
+EphemeralMongo.MongoRunnerOptions.UseSingleNodeReplicaSet.get -> bool
+EphemeralMongo.MongoRunnerOptions.UseSingleNodeReplicaSet.set -> void
+EphemeralMongo.MongoRunnerOptions.Version.get -> EphemeralMongo.MongoVersion
+EphemeralMongo.MongoRunnerOptions.Version.set -> void
+EphemeralMongo.MongoVersion
+EphemeralMongo.MongoVersion.V6 = 6 -> EphemeralMongo.MongoVersion
+EphemeralMongo.MongoVersion.V7 = 7 -> EphemeralMongo.MongoVersion
+EphemeralMongo.MongoVersion.V8 = 8 -> EphemeralMongo.MongoVersion
+static EphemeralMongo.MongoRunner.RunAsync(EphemeralMongo.MongoRunnerOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!

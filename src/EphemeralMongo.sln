@@ -1,42 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Core.Tests", "EphemeralMongo.Core.Tests\EphemeralMongo.Core.Tests.csproj", "{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v2.Tests", "EphemeralMongo.v2.Tests\EphemeralMongo.v2.Tests.csproj", "{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{5C8A04E9-E805-451A-B73B-05248DCCD0EE}"
 	ProjectSection(SolutionItems) = preProject
-		.\.editorconfig = .\.editorconfig
-		.\Directory.Build.props = .\Directory.Build.props
-		global.json = global.json
 		..\README.md = ..\README.md
+		..\global.json = ..\global.json
+		..\nuget.config = ..\nuget.config
+		..\.editorconfig = ..\.editorconfig
+		..\Directory.Build.props = ..\Directory.Build.props
+		..\Directory.Packages.props = ..\Directory.Packages.props
+		..\build.ps1 = ..\build.ps1
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "runtimes", "runtimes", "{819E3828-0328-4F38-BDB3-5825B4913AAB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v2", "EphemeralMongo.v2\EphemeralMongo.v2.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Core", "EphemeralMongo.Core\EphemeralMongo.Core.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo", "EphemeralMongo\EphemeralMongo.csproj", "{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.osx-arm64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.linux-x64.csproj", "{6D723CAC-6C36-432B-AF82-FED039080D40}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6.runtime.win-x64", "EphemeralMongo.Runtimes\EphemeralMongo6.runtime.win-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo6", "EphemeralMongo6\EphemeralMongo6.csproj", "{9BA549AC-C09B-4913-B5ED-981BE389F0BF}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7", "EphemeralMongo7\EphemeralMongo7.csproj", "{D6CB0731-201C-4561-85F8-93DD0109CE43}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.linux-x64.csproj", "{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.osx-arm64.csproj", "{0772619C-E004-474A-AC00-4974C545C825}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo7.runtime.win-x64", "EphemeralMongo.Runtimes\EphemeralMongo7.runtime.win-x64.csproj", "{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8", "EphemeralMongo8\EphemeralMongo8.csproj", "{61D2DBAB-B085-419D-81F0-184B293923B4}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.linux-x64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.linux-x64.csproj", "{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.osx-arm64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.osx-arm64.csproj", "{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo8.runtime.win-x64", "EphemeralMongo.Runtimes\EphemeralMongo8.runtime.win-x64.csproj", "{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "EphemeralMongo.Tests\EphemeralMongo.Tests.csproj", "{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -52,64 +33,15 @@ Global
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{6D723CAC-6C36-432B-AF82-FED039080D40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6D723CAC-6C36-432B-AF82-FED039080D40}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6D723CAC-6C36-432B-AF82-FED039080D40}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{6D723CAC-6C36-432B-AF82-FED039080D40}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Release|Any CPU.Build.0 = Release|Any CPU
-		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{0772619C-E004-474A-AC00-4974C545C825}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0772619C-E004-474A-AC00-4974C545C825}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0772619C-E004-474A-AC00-4974C545C825}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{0772619C-E004-474A-AC00-4974C545C825}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{61D2DBAB-B085-419D-81F0-184B293923B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{61D2DBAB-B085-419D-81F0-184B293923B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{61D2DBAB-B085-419D-81F0-184B293923B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{61D2DBAB-B085-419D-81F0-184B293923B4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{934F2444-D4EC-4D67-BEE3-C089FC5E61B8}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{6D723CAC-6C36-432B-AF82-FED039080D40} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{0772619C-E004-474A-AC00-4974C545C825} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{CDDDD084-72FE-4BBB-9239-4B9D038C8F16} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{FBEBBD3B-68F1-4DC7-B76F-BFB4DC5D7564} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{053FFBCB-EBB4-4B0F-8AD1-ED35AF0BE6F1} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{934F2444-D4EC-4D67-BEE3-C089FC5E61B8} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 	EndGlobalSection
 EndGlobal

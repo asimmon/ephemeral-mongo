@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <RootNamespace>EphemeralMongo.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="System.Memory" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\EphemeralMongo.Tests\*.cs" />
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadArchitectureHelperTests.cs">
+      <Link>DownloadArchitectureHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadEditionHelperTests.cs">
+      <Link>DownloadEditionHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadTargetHelperTests.cs">
+      <Link>DownloadTargetHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\MongoRunnerTests.cs">
+      <Link>MongoRunnerTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\ProcessArgumentTests.cs">
+      <Link>ProcessArgumentTests.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\EphemeralMongo.v2.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
