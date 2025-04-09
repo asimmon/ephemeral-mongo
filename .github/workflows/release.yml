@@ -1,13 +1,12 @@
-name: NuGet push
+name: Release
 
 on:
   push:
-    tags:
-      - "*.*.*"
+    tags: ["*.*.*"]
 
 jobs:
-  pack:
-    runs-on: ubuntu-latest
+  release:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,55 +14,12 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
 
-      - run: ./build.ps1 --target=pack
+      # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
+      - run: |
+          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap-2.5-0 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
+
+      - run: ./build.ps1
         shell: pwsh
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
-          path: .output/
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
-          include-hidden-files: true
-
-  test:
-    runs-on: ubuntu-latest
-    needs: [pack]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
-          path: .output/
-
-      - run: ./build.ps1 --target=test --exclusive
-        shell: pwsh
-
-  push:
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
-          path: .output/
-
-      - run: ./build.ps1 --target=push --exclusive --nuget-api-key=${{ secrets.nuget_api_key }} --nuget-source=${{ secrets.nuget_source }}
-        shell: pwsh
-
-  clean:
-    if: always()
-    runs-on: ubuntu-latest
-    needs: [push]
-    steps:
-      - uses: geekyeggo/delete-artifact@v5
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
+        env:
+          NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

@@ -1,4 +1,4 @@
-name: CI build
+name: CI
 
 on:
   workflow_dispatch:
@@ -10,8 +10,11 @@ on:
     paths-ignore: ["*.md"]
 
 jobs:
-  pack:
-    runs-on: ubuntu-latest
+  ci:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-14]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,42 +22,18 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
 
-      - run: ./build.ps1 --target=pack
+      # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
+      - if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap-2.5-0 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
+
+      - if: matrix.os == 'ubuntu-22.04'
+        run: ./build.ps1
         shell: pwsh
+        env:
+          NUGET_SOURCE: ${{ secrets.MYGET_SOURCE }}
+          NUGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
-          path: .output/
-          if-no-files-found: error
-          retention-days: 1
-          compression-level: 0
-          include-hidden-files: true
-
-  test:
-    runs-on: ${{ matrix.os }}
-    needs: [pack]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}
-          path: .output/
-
-      - run: ./build.ps1 --target=test --exclusive
+      - if: matrix.os != 'ubuntu-22.04'
+        run: ./build.ps1
         shell: pwsh
-
-  clean:
-    if: always()
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - uses: geekyeggo/delete-artifact@v5
-        with:
-          name: output-${{ github.run_number }}-${{ github.run_attempt }}

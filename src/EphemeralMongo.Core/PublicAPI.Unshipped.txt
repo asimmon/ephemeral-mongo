@@ -1,5 +1,0 @@
-﻿#nullable enable
-EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.get -> bool
-EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.set -> void
-EphemeralMongo.MongoRunnerOptions.StandardOuputLogger.get -> EphemeralMongo.Logger?
-EphemeralMongo.MongoRunnerOptions.StandardOuputLogger.set -> void
