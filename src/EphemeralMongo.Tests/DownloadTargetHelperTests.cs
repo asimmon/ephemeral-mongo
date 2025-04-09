@@ -18,14 +18,14 @@ public sealed class DownloadTargetHelperTests : IDisposable
     [Fact]
     public void GetTarget_ReturnsWindows_WhenOsPlatformIsWindows()
     {
-        var target = this._helper.GetTarget(OSPlatform.Windows);
+        var target = this._helper.GetTarget(OSPlatform.Windows, MongoVersion.V8);
         Assert.Equal("windows", target);
     }
 
     [Fact]
     public void GetTarget_ReturnsMacOS_WhenOsPlatformIsOSX()
     {
-        var target = this._helper.GetTarget(OSPlatform.OSX);
+        var target = this._helper.GetTarget(OSPlatform.OSX, MongoVersion.V8);
         Assert.Equal("macos", target);
     }
 
@@ -72,7 +72,18 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ReturnsLinuxTarget_WhenLinuxOsReleaseFileExists(string actualId, string actualVersionId, string expectedTarget)
     {
         this.CreateOsReleaseFile(actualId, actualVersionId);
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
+        Assert.Equal(expectedTarget, target);
+    }
+
+    [Theory]
+    [InlineData("ubuntu", "24.04", "ubuntu2204", MongoVersion.V6)]
+    [InlineData("ubuntu", "24.04", "ubuntu2204", MongoVersion.V7)]
+    [InlineData("ubuntu", "24.04", "ubuntu2404", MongoVersion.V8)]
+    public void GetTarget_AdjustsLinuxTarget_ForOlderMongoVersions(string actualId, string actualVersionId, string expectedTarget, MongoVersion version)
+    {
+        this.CreateOsReleaseFile(actualId, actualVersionId);
+        var target = this._helper.GetTarget(OSPlatform.Linux, version);
         Assert.Equal(expectedTarget, target);
     }
 
@@ -89,14 +100,14 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ThrowsNotSupportedException_WhenOsVersionIsInvalid(string id, string versionId)
     {
         this.CreateOsReleaseFile(id, versionId);
-        var exception = Assert.Throws<NotSupportedException>(() => this._helper.GetTarget(OSPlatform.Linux));
+        var exception = Assert.Throws<NotSupportedException>(() => this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8));
         Assert.Contains(versionId, exception.Message);
     }
 
     [Fact]
     public void GetTarget_ReturnsFallbackTarget_WhenOsReleaseFileDoesNotExist()
     {
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
         Assert.Equal("ubuntu2204", target);
     }
 
@@ -109,7 +120,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ReturnsFallbackTarget_WhenVersionIdIsMissing(string id)
     {
         this.CreateOsReleaseFile(id, versionId: null);
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
         Assert.Equal("ubuntu2204", target);
     }
 
@@ -125,7 +136,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ReturnsFallbackTarget_WhenIdIsMissing(string versionId)
     {
         this.CreateOsReleaseFile(id: null, versionId);
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
         Assert.Equal("ubuntu2204", target);
     }
 
@@ -133,7 +144,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ReturnsFallbackTarget_WhenBothIdAndVersionIdAreMissing()
     {
         this.CreateOsReleaseFile(id: null, versionId: null);
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
         Assert.Equal("ubuntu2204", target);
     }
 
@@ -146,7 +157,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ReturnsFallbackTarget_WhenIdIsNotSupported(string id, string versionId)
     {
         this.CreateOsReleaseFile(id, versionId);
-        var target = this._helper.GetTarget(OSPlatform.Linux);
+        var target = this._helper.GetTarget(OSPlatform.Linux, MongoVersion.V8);
         Assert.Equal("ubuntu2204", target);
     }
 
@@ -155,7 +166,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     public void GetTarget_ThrowsPlatformNotSupportedException_WhenOsPlatformIsUnsupported()
     {
         var unsupportedPlatform = OSPlatform.FreeBSD;
-        Assert.Throws<PlatformNotSupportedException>(() => this._helper.GetTarget(unsupportedPlatform));
+        Assert.Throws<PlatformNotSupportedException>(() => this._helper.GetTarget(unsupportedPlatform, MongoVersion.V8));
     }
 #endif
 
@@ -194,3 +205,4 @@ public sealed class DownloadTargetHelperTests : IDisposable
         }
     }
 }
+
