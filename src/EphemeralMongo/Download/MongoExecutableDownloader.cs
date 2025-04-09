@@ -28,7 +28,7 @@ internal static class MongoExecutableDownloader
         var majorVersion = (int)options.Version;
         var edition = DownloadEditionHelper.GetEdition(options.Edition);
         var architecture = DownloadArchitectureHelper.GetArchitecture();
-        var target = DownloadTargetHelper.GetTarget();
+        var target = DownloadTargetHelper.GetTarget(options.Version);
 
         var baseExeDirName = string.Format(CultureInfo.InvariantCulture, "{0}-{1}-{2}", MongodExeFileNameWithoutExt, edition, majorVersion);
         var baseExeDirPath = Path.Combine(AppDataDirPath, "bin", MongodExeFileNameWithoutExt, baseExeDirName);
@@ -168,7 +168,7 @@ internal static class MongoExecutableDownloader
             }
 
             var architecture = DownloadArchitectureHelper.GetArchitecture();
-            var target = DownloadTargetHelper.GetTarget();
+            var target = DownloadTargetHelper.GetTarget(options.Version);
 
             var mongoToolsVersions = await options.Transport.GetFromJsonAsync<ToolsVersionsDto>("https://downloads.mongodb.org/tools/db/release.json", cancellationToken).ConfigureAwait(false);
 

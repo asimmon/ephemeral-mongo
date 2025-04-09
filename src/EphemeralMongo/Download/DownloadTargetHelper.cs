@@ -5,14 +5,14 @@ namespace EphemeralMongo.Download;
 
 internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
 {
-    private static readonly DownloadTargetHelper Instance = new DownloadTargetHelper("/etc/os-release");
+    internal static readonly DownloadTargetHelper Instance = new DownloadTargetHelper("/etc/os-release");
 
-    public static string GetTarget()
+    public static string GetTarget(MongoVersion version)
     {
-        return Instance.GetTarget(RuntimeInformationHelper.OSPlatform);
+        return Instance.GetTarget(RuntimeInformationHelper.OSPlatform, version);
     }
 
-    public string GetTarget(OSPlatform platform)
+    public string GetTarget(OSPlatform platform, MongoVersion version)
     {
         if (platform == OSPlatform.Windows)
         {
@@ -26,10 +26,26 @@ internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
 
         if (platform == OSPlatform.Linux)
         {
-            return this.GetLinuxTarget();
+            return this.GetAdjustedLinuxTarget(version);
         }
 
         throw new PlatformNotSupportedException($"Unsupported operating system {RuntimeInformation.OSDescription}");
+    }
+
+    private string GetAdjustedLinuxTarget(MongoVersion version)
+    {
+        // Some Linux distributions have limited support for older MongoDB versions.
+        // For instance, there's no specific MongoDB binaries targeting Ubuntu 24.04 for MongoDB 7 and earlier,
+        // but it works if use the Ubuntu 22.04 binaries on Ubuntu 24.04.
+        // We're focusing on Ubuntu for now as it's the most common Linux distribution for CIs.
+        var originalTarget = this.GetOriginalLinuxTarget();
+
+        if (originalTarget == "ubuntu2404" && version is MongoVersion.V6 or MongoVersion.V7)
+        {
+            return "ubuntu2204";
+        }
+
+        return originalTarget;
     }
 
     // Matches ID and VERSION_ID keys and their values without quotes in /etc/os-release
@@ -37,7 +53,7 @@ internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
         "^(?<key>ID|VERSION_ID)=\"?(?<value>[^\"]+)\"?$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-    private string GetLinuxTarget()
+    internal string GetOriginalLinuxTarget()
     {
         string? target = null;
         try
