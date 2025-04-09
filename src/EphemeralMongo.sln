@@ -4,10 +4,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "Eph
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{5C8A04E9-E805-451A-B73B-05248DCCD0EE}"
 	ProjectSection(SolutionItems) = preProject
-		.\.editorconfig = .\.editorconfig
-		.\Directory.Build.props = .\Directory.Build.props
 		..\README.md = ..\README.md
 		..\global.json = ..\global.json
+		..\nuget.config = ..\nuget.config
+		..\.editorconfig = ..\.editorconfig
+		..\Directory.Build.props = ..\Directory.Build.props
+		..\Directory.Packages.props = ..\Directory.Packages.props
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo", "EphemeralMongo\EphemeralMongo.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"

@@ -219,6 +219,10 @@ internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
     private static string EnsureAtLeastTwoVersionParts(string version)
     {
         // System.Version requires at least two parts (e.g., 18.04)
+#if  NETSTANDARD2_0
         return version.IndexOf(".", StringComparison.Ordinal) == -1 ? $"{version}.0" : version;
+#else
+        return version.Contains('.', StringComparison.Ordinal) ? version : $"{version}.0";
+#endif
     }
 }

@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Workleap.DotNet.CodingStandards" Version="1.1.1">
+    <PackageReference Include="Workleap.DotNet.CodingStandards">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
