@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "EphemeralMongo.Tests\EphemeralMongo.Tests.csproj", "{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v2.Tests", "EphemeralMongo.v2.Tests\EphemeralMongo.v2.Tests.csproj", "{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{5C8A04E9-E805-451A-B73B-05248DCCD0EE}"
 	ProjectSection(SolutionItems) = preProject
@@ -10,13 +10,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{5C8A04E9
 		..\.editorconfig = ..\.editorconfig
 		..\Directory.Build.props = ..\Directory.Build.props
 		..\Directory.Packages.props = ..\Directory.Packages.props
+		..\build.ps1 = ..\build.ps1
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo", "EphemeralMongo\EphemeralMongo.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v2", "EphemeralMongo.v2\EphemeralMongo.v2.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v3", "EphemeralMongo.v3\EphemeralMongo.v3.csproj", "{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo", "EphemeralMongo\EphemeralMongo.csproj", "{0CA8AB33-9DF9-473E-ACB6-41C369E524F3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.v3.Tests", "EphemeralMongo.v3.Tests\EphemeralMongo.v3.Tests.csproj", "{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "EphemeralMongo.Tests\EphemeralMongo.Tests.csproj", "{A365BA82-91A2-4E5E-BDA1-803C9BF170A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

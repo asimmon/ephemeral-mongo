@@ -1,27 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>EphemeralMongo</AssemblyName>
     <RootNamespace>EphemeralMongo</RootNamespace>
-    <PackageId>EphemeralMongo.v3</PackageId>
+    <PackageId>EphemeralMongo.v2</PackageId>
     <IsPackable>true</IsPackable>
     <Description>The core library of the .NET wrapper for MongoDB built for .NET Standard 2.0.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DefineConstants>$(DefineConstants);MONGODB_V3</DefineConstants>
+    <DefineConstants>$(DefineConstants);MONGODB_V2</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\EphemeralMongo\*.cs" />
-    <Compile Include="..\EphemeralMongo\Download\*.cs" Link="Download\%(RecursiveDir)%(Filename)%(Extension)" />
-
-    <AdditionalFiles Include="..\EphemeralMongo\NativeMethods.txt" />
-    <AdditionalFiles Include="..\EphemeralMongo\PublicAPI.Shipped.txt" />
-    <AdditionalFiles Include="..\EphemeralMongo\PublicAPI.Unshipped.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="MongoDB.Driver" VersionOverride="[2.28.0,3.0.0)" />
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -36,12 +27,12 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="EphemeralMongo.v3.Tests" />
+    <InternalsVisibleTo Include="EphemeralMongo.v2.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -23,7 +23,7 @@ Process {
     Exec { & dotnet clean -c Release }
     Exec { & dotnet build -c Release }
     Exec { & dotnet run   -c Release --no-build --no-restore --project "EphemeralMongo.Tests" }
-    Exec { & dotnet run   -c Release --no-build --no-restore --project "EphemeralMongo.v3.Tests" }
+    Exec { & dotnet run   -c Release --no-build --no-restore --project "EphemeralMongo.v2.Tests" }
     Exec { & dotnet pack  -c Release --no-build --output "$outputDir" }
 
     if (($null -ne $env:NUGET_SOURCE ) -and ($null -ne $env:NUGET_API_KEY)) {

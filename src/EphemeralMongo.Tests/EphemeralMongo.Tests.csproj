@@ -8,6 +8,7 @@
     <NoWarn>$(NoWarn);CA2007</NoWarn>
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <RootNamespace>EphemeralMongo.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,10 +23,32 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\EphemeralMongo.Tests\*.cs" />
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadArchitectureHelperTests.cs">
+      <Link>DownloadArchitectureHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadEditionHelperTests.cs">
+      <Link>DownloadEditionHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\DownloadTargetHelperTests.cs">
+      <Link>DownloadTargetHelperTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\MongoRunnerTests.cs">
+      <Link>MongoRunnerTests.cs</Link>
+    </Compile>
+    <Compile Include="..\EphemeralMongo.v2.Tests\ProcessArgumentTests.cs">
+      <Link>ProcessArgumentTests.cs</Link>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\EphemeralMongo.v2.Tests\xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>xunit.runner.json</Link>
+    </Content>
   </ItemGroup>
 </Project>
