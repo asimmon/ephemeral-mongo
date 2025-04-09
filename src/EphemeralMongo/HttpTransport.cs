@@ -6,8 +6,14 @@ namespace EphemeralMongo;
 [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "HttpClient is a singleton or managed by the caller")]
 public sealed class HttpTransport
 {
-    // TODO use socket http handler for when targeting .NET Core
+#if NET8_0_OR_GREATER
+    private static readonly HttpClient SharedDefaultHttpClient = new HttpClient(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+    });
+#else
     private static readonly HttpClient SharedDefaultHttpClient = new HttpClient();
+#endif
 
     private readonly HttpClient _httpClient;
 
