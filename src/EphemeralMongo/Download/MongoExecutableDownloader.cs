@@ -107,7 +107,11 @@ internal static class MongoExecutableDownloader
 
                 Directory.CreateDirectory(exeDirPath);
 
-                File.Copy(tmpExeFilePath, exeFilePath);
+                if (!File.Exists(exeFilePath))
+                {
+                    // Prevent duplicate writes on situations where tests run from multiple assemblies in parallel
+                    File.Copy(tmpExeFilePath, exeFilePath);
+                }
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
@@ -115,7 +119,10 @@ internal static class MongoExecutableDownloader
                     foreach (var tmpDllFilePath in Directory.EnumerateFiles(tmpExeDirPath, "*.dll", SearchOption.TopDirectoryOnly))
                     {
                         var dllFilePath = Path.Combine(exeDirPath, Path.GetFileName(tmpDllFilePath));
-                        File.Copy(tmpDllFilePath, dllFilePath);
+                        if (!File.Exists(dllFilePath))
+                        {
+                            File.Copy(tmpDllFilePath, dllFilePath);
+                        }
                     }
                 }
 
