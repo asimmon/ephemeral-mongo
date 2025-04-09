@@ -5,7 +5,7 @@ namespace EphemeralMongo.Download;
 
 internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
 {
-    private static readonly DownloadTargetHelper Instance = new DownloadTargetHelper("/etc/os-release");
+    internal static readonly DownloadTargetHelper Instance = new DownloadTargetHelper("/etc/os-release");
 
     public static string GetTarget(MongoVersion version)
     {
@@ -38,7 +38,7 @@ internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
         // For instance, there's no specific MongoDB binaries targeting Ubuntu 24.04 for MongoDB 7 and earlier,
         // but it works if use the Ubuntu 22.04 binaries on Ubuntu 24.04.
         // We're focusing on Ubuntu for now as it's the most common Linux distribution for CIs.
-        var originalTarget = this.GetLinuxTarget();
+        var originalTarget = this.GetOriginalLinuxTarget();
 
         if (originalTarget == "ubuntu2404" && version is MongoVersion.V6 or MongoVersion.V7)
         {
@@ -53,7 +53,7 @@ internal sealed class DownloadTargetHelper(string linuxOsReleasePath)
         "^(?<key>ID|VERSION_ID)=\"?(?<value>[^\"]+)\"?$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-    private string GetLinuxTarget()
+    internal string GetOriginalLinuxTarget()
     {
         string? target = null;
         try

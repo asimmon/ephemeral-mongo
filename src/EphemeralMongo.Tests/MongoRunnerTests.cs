@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using EphemeralMongo.Download;
 using MongoDB.Driver;
 
 namespace EphemeralMongo.Tests;
@@ -108,6 +110,15 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     [InlineData(true, MongoVersion.V8, MongoEdition.Enterprise)]
     public async Task Import_Export_Works(bool replset, MongoVersion version, MongoEdition edition)
     {
+        if (version is MongoVersion.V6 or MongoVersion.V7 && edition == MongoEdition.Enterprise && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            var target = DownloadTargetHelper.Instance.GetOriginalLinuxTarget();
+            if (target == "ubuntu2404")
+            {
+                Assert.Skip("Enterprise MongoDB 6 and 7 are not supported on Ubuntu 24.04");
+            }
+        }
+
         const string databaseName = "default";
         const string collectionName = "people";
 
