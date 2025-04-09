@@ -21,12 +21,13 @@ Process {
     Remove-Item $outputDir -Force -Recurse -ErrorAction SilentlyContinue
 
     Exec { & dotnet clean -c Release }
+
     Exec { & dotnet build -c Release }
-    Exec { & dotnet run   -c Release --no-build --no-restore --project "EphemeralMongo.Tests" }
-    Exec { & dotnet run   -c Release --no-build --no-restore --project "EphemeralMongo.v2.Tests" --framework net9.0 }
-    if ($IsWindows) {
-      Exec { & dotnet run -c Release --no-build --no-restore --project "EphemeralMongo.v2.Tests" --framework net472 }
-    }
+
+    # https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-integration-dotnet-test
+    # https://github.com/microsoft/testfx/issues/4396
+    Exec { & dotnet test  -c Release --no-build --no-restore -p:TestingPlatformShowTestsFailure=true -p:TestingPlatformCaptureOutput=false -tl:false }
+
     Exec { & dotnet pack  -c Release --no-build --output "$outputDir" }
 
     if (($null -ne $env:NUGET_SOURCE ) -and ($null -ne $env:NUGET_API_KEY)) {
