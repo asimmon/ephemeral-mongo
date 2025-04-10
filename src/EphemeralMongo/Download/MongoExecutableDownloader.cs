@@ -107,7 +107,7 @@ internal static class MongoExecutableDownloader
 
                 Directory.CreateDirectory(exeDirPath);
 
-                File.Copy(tmpExeFilePath, exeFilePath);
+                SafeFileCopy(tmpExeFilePath, exeFilePath);
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
@@ -115,7 +115,7 @@ internal static class MongoExecutableDownloader
                     foreach (var tmpDllFilePath in Directory.EnumerateFiles(tmpExeDirPath, "*.dll", SearchOption.TopDirectoryOnly))
                     {
                         var dllFilePath = Path.Combine(exeDirPath, Path.GetFileName(tmpDllFilePath));
-                        File.Copy(tmpDllFilePath, dllFilePath);
+                        SafeFileCopy(tmpDllFilePath, dllFilePath);
                     }
                 }
 
@@ -218,8 +218,9 @@ internal static class MongoExecutableDownloader
                     throw new InvalidOperationException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
                 }
 
-                File.Copy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
-                File.Copy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
+                SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
+                SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
+
                 UpdateLastCheckFile(lastCheckFilePath);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
@@ -320,6 +321,24 @@ internal static class MongoExecutableDownloader
         catch (IOException)
         {
             // We did our best. OS can clean up later.
+        }
+    }
+
+    private static void SafeFileCopy(string sourceFilePath, string destFilePath)
+    {
+        if (File.Exists(destFilePath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Copy(sourceFilePath, destFilePath, overwrite: false);
+        }
+        catch (IOException) when (File.Exists(destFilePath))
+        {
+            // Another process already copied the file, which is fine
+            // This mostly happens in tests where we run two assemblies side by side (net9.0 and net472 for instance)
         }
     }
 }

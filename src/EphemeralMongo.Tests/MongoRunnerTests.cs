@@ -41,58 +41,61 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     [Fact]
     public async Task Run_Cleans_Up_Temporary_Data_Directory()
     {
-        // TODO this conflicts in multitarget builds
-        var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo-data-cleanup-tests");
+        var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
         try
         {
-            // Start with a clean slate
-            Directory.Delete(rootDataDirectoryPath, recursive: true);
+            var options = new MongoRunnerOptions
+            {
+                StandardOutputLogger = this.MongoMessageLogger,
+                StandardErrorLogger = this.MongoMessageLogger,
+                RootDataDirectoryPath = rootDataDirectoryPath,
+                AdditionalArguments = ["--quiet"],
+            };
+
+            testOutputHelper.WriteLine("Root data directory path: {0}", options.RootDataDirectoryPath);
+            Assert.False(Directory.Exists(options.RootDataDirectoryPath), "The root data directory should not exist yet.");
+
+            // Creating a first data directory
+            using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
+            {
+            }
+
+            // Creating another data directory
+            using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
+            {
+            }
+
+            // Assert there's now two data directories
+            var dataDirectories = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+            testOutputHelper.WriteLine("Data directories: {0}", string.Join(", ", dataDirectories));
+            Assert.Equal(2, dataDirectories.Count);
+
+            // Shorten the lifetime of the data directories and wait for a longer time
+            options.DataDirectoryLifetime = TimeSpan.FromSeconds(1);
+            await Task.Delay(TimeSpan.FromSeconds(2), testContextAccessor.Current.CancellationToken);
+
+            // This should delete the old data directories and create a new one
+            using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
+            {
+            }
+
+            var dataDirectoriesAfterCleanup = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+            testOutputHelper.WriteLine("Data directories after cleanup: {0}", string.Join(", ", dataDirectoriesAfterCleanup));
+
+            var thirdDataDirectory = Assert.Single(dataDirectoriesAfterCleanup);
+            Assert.DoesNotContain(thirdDataDirectory, dataDirectories);
         }
-        catch (DirectoryNotFoundException)
+        finally
         {
+            try
+            {
+                Directory.Delete(rootDataDirectoryPath, recursive: true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+            }
         }
-
-        var options = new MongoRunnerOptions
-        {
-            StandardOutputLogger = this.MongoMessageLogger,
-            StandardErrorLogger = this.MongoMessageLogger,
-            RootDataDirectoryPath = rootDataDirectoryPath,
-            AdditionalArguments = ["--quiet"],
-        };
-
-        testOutputHelper.WriteLine("Root data directory path: {0}", options.RootDataDirectoryPath);
-        Assert.False(Directory.Exists(options.RootDataDirectoryPath), "The root data directory should not exist yet.");
-
-        // Creating a first data directory
-        using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
-        {
-        }
-
-        // Creating another data directory
-        using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
-        {
-        }
-
-        // Assert there's now two data directories
-        var dataDirectories = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
-        testOutputHelper.WriteLine("Data directories: {0}", string.Join(", ", dataDirectories));
-        Assert.Equal(2, dataDirectories.Count);
-
-        // Shorten the lifetime of the data directories and wait for a longer time
-        options.DataDirectoryLifetime = TimeSpan.FromSeconds(1);
-        await Task.Delay(TimeSpan.FromSeconds(2), testContextAccessor.Current.CancellationToken);
-
-        // This should delete the old data directories and create a new one
-        using (await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
-        {
-        }
-
-        var dataDirectoriesAfterCleanup = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
-        testOutputHelper.WriteLine("Data directories after cleanup: {0}", string.Join(", ", dataDirectoriesAfterCleanup));
-
-        var thirdDataDirectory = Assert.Single(dataDirectoriesAfterCleanup);
-        Assert.DoesNotContain(thirdDataDirectory, dataDirectories);
     }
 
     [Theory]
@@ -168,8 +171,9 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 Assert.Equal(originalPerson, personAfterImport);
             }
 
+#pragma warning disable CA1849 // We want to test synchronous methods
             IMongoRunner runner2;
-            using (runner2 = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
+            using (runner2 = MongoRunner.Run(options))
             {
                 var database = new MongoClient(runner2.ConnectionString).GetDatabase(databaseName);
 
@@ -178,12 +182,13 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 Assert.Null(personBeforeImport);
 
                 // Import the exported collection
-                await runner2.ImportAsync(databaseName, collectionName, exportedFilePath, ["--jsonArray"], cancellationToken: testContextAccessor.Current.CancellationToken);
+                runner2.Import(databaseName, collectionName, exportedFilePath, ["--jsonArray"]);
 
                 // Verify that the document was imported successfully
                 var personAfterImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault(testContextAccessor.Current.CancellationToken);
                 Assert.Equal(originalPerson, personAfterImport);
             }
+#pragma warning restore CA1849
 
             // Disposing twice does nothing
             runner2.Dispose();

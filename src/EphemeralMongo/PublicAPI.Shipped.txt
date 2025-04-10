@@ -5,7 +5,9 @@ EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpClient! httpClien
 EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpMessageHandler! handler) -> void
 EphemeralMongo.IMongoRunner
 EphemeralMongo.IMongoRunner.ConnectionString.get -> string!
+EphemeralMongo.IMongoRunner.Export(string! database, string! collection, string! outputFilePath, string![]? additionalArguments = null) -> void
 EphemeralMongo.IMongoRunner.ExportAsync(string! database, string! collection, string! outputFilePath, string![]? additionalArguments = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EphemeralMongo.IMongoRunner.Import(string! database, string! collection, string! inputFilePath, string![]? additionalArguments = null, bool drop = false) -> void
 EphemeralMongo.IMongoRunner.ImportAsync(string! database, string! collection, string! inputFilePath, string![]? additionalArguments = null, bool drop = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 EphemeralMongo.Logger
 EphemeralMongo.MongoEdition
@@ -47,4 +49,5 @@ EphemeralMongo.MongoVersion
 EphemeralMongo.MongoVersion.V6 = 6 -> EphemeralMongo.MongoVersion
 EphemeralMongo.MongoVersion.V7 = 7 -> EphemeralMongo.MongoVersion
 EphemeralMongo.MongoVersion.V8 = 8 -> EphemeralMongo.MongoVersion
+static EphemeralMongo.MongoRunner.Run(EphemeralMongo.MongoRunnerOptions? options = null) -> EphemeralMongo.IMongoRunner!
 static EphemeralMongo.MongoRunner.RunAsync(EphemeralMongo.MongoRunnerOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!

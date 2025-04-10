@@ -5,7 +5,7 @@
     <RootNamespace>EphemeralMongo</RootNamespace>
     <PackageId>EphemeralMongo.v2</PackageId>
     <IsPackable>true</IsPackable>
-    <Description>The core library of the .NET wrapper for MongoDB built for .NET Standard 2.0.</Description>
+    <Description>Provides access to preconfigured MongoDB servers for testing purposes, without Docker or other dependencies.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);MONGODB_V2</DefineConstants>
