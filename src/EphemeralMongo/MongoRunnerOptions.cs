@@ -17,7 +17,7 @@ public sealed class MongoRunnerOptions
     {
     }
 
-    public MongoRunnerOptions(MongoRunnerOptions options)
+    internal MongoRunnerOptions(MongoRunnerOptions options)
     {
         if (options == null)
         {
