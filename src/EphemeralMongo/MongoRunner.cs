@@ -39,7 +39,7 @@ public sealed class MongoRunner
 
     public static IMongoRunner Run(MongoRunnerOptions? options = null)
     {
-        return Task.Run(() => RunAsync(options)).ConfigureAwait(false).GetAwaiter().GetResult();
+        return RunAsync(options).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     private async Task<IMongoRunner> RunInternalAsync(CancellationToken cancellationToken)
@@ -286,7 +286,7 @@ public sealed class MongoRunner
 
         public void Import(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false)
         {
-            Task.Run(() => this.ImportAsync(database, collection, inputFilePath, additionalArguments, drop)).ConfigureAwait(false).GetAwaiter().GetResult();
+            this.ImportAsync(database, collection, inputFilePath, additionalArguments, drop).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
@@ -343,7 +343,7 @@ public sealed class MongoRunner
 
         public void Export(string database, string collection, string outputFilePath, string[]? additionalArguments = null)
         {
-            Task.Run(() => this.ExportAsync(database, collection, outputFilePath, additionalArguments)).ConfigureAwait(false).GetAwaiter().GetResult();
+            this.ExportAsync(database, collection, outputFilePath, additionalArguments).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public void Dispose()
