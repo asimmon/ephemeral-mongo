@@ -171,8 +171,9 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 Assert.Equal(originalPerson, personAfterImport);
             }
 
+#pragma warning disable CA1849 // We want to test synchronous methods
             IMongoRunner runner2;
-            using (runner2 = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
+            using (runner2 = MongoRunner.Run(options))
             {
                 var database = new MongoClient(runner2.ConnectionString).GetDatabase(databaseName);
 
@@ -181,12 +182,13 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 Assert.Null(personBeforeImport);
 
                 // Import the exported collection
-                await runner2.ImportAsync(databaseName, collectionName, exportedFilePath, ["--jsonArray"], cancellationToken: testContextAccessor.Current.CancellationToken);
+                runner2.Import(databaseName, collectionName, exportedFilePath, ["--jsonArray"]);
 
                 // Verify that the document was imported successfully
                 var personAfterImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault(testContextAccessor.Current.CancellationToken);
                 Assert.Equal(originalPerson, personAfterImport);
             }
+#pragma warning restore CA1849
 
             // Disposing twice does nothing
             runner2.Dispose();
