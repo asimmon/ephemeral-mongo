@@ -161,7 +161,7 @@ Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d4
 
 ### 3.0.0
 
-See the announcement (TODO).
+See [this announcement](https://github.com/asimmon/ephemeral-mongo/issues/80).
 
 ### 2.0.0
 
