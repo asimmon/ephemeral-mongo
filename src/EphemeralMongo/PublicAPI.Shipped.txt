@@ -1,6 +1,5 @@
 #nullable enable
 EphemeralMongo.HttpTransport
-EphemeralMongo.HttpTransport.HttpTransport() -> void
 EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpClient! httpClient) -> void
 EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpMessageHandler! handler) -> void
 EphemeralMongo.IMongoRunner
@@ -30,7 +29,6 @@ EphemeralMongo.MongoRunnerOptions.Edition.set -> void
 EphemeralMongo.MongoRunnerOptions.MongoPort.get -> int?
 EphemeralMongo.MongoRunnerOptions.MongoPort.set -> void
 EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions() -> void
-EphemeralMongo.MongoRunnerOptions.MongoRunnerOptions(EphemeralMongo.MongoRunnerOptions! options) -> void
 EphemeralMongo.MongoRunnerOptions.NewVersionCheckTimeout.get -> System.TimeSpan
 EphemeralMongo.MongoRunnerOptions.NewVersionCheckTimeout.set -> void
 EphemeralMongo.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan

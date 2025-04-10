@@ -22,7 +22,7 @@ public sealed class HttpTransport
         this._httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
-    public HttpTransport()
+    internal HttpTransport()
         : this(SharedDefaultHttpClient)
     {
     }
