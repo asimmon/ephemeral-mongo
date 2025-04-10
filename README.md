@@ -122,17 +122,29 @@ using (await var runner = MongoRunner.RunAsync(options))
 
 ## How it works
 
-* At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded (if not already present) and extracted to your local application data directory.
+* At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded when needed (if not already present) and extracted to your local application data directory.
 * `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process with a random available port.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
-* By default, a unique temporary data directory is used.
+* By default, a unique temporary data directory is used and deleted when the `runner` is disposed.
 
 ## MongoDB Enterprise
 
-Make sure you are allowed to use MongoDB Enterprise binaries in your project.
-The official documentation states:
+Make sure you are allowed to use MongoDB Enterprise binaries in your projects. The [official download page](https://www.mongodb.com/try/download/enterprise) states:
 
 > MongoDB Enterprise Server is also available free of charge for evaluation and development purposes.
+
+The Enterprise edition provides access to the in-memory storage engine, which is faster and more efficient for tests:
+
+```csharp
+var options = new MongoRunnerOptions
+{
+    Edition = MongoEdition.Enterprise,
+    AdditionalArguments = ["--storageEngine", "inMemory"],
+};
+
+using var runner = await MongoRunner.RunAsync(options);
+// [...]
+```
 
 ## Windows Defender Firewall prompt
 
@@ -149,7 +161,7 @@ Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d4
 
 ### 3.0.0
 
-See the announcement.
+See the announcement (TODO).
 
 ### 2.0.0
 
