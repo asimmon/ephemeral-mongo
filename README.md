@@ -1,13 +1,13 @@
 <!-- omit from toc -->
 # EphemeralMongo
 
-[![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github&label=ci)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml)
-[![publish](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github&label=release)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
+[![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github&label=ci)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml) [![publish](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github&label=release)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
 - [About](#about)
 - [Installation](#installation)
-- [Getting started](#getting-started)
+- [Usage](#usage)
 - [How it works](#how-it-works)
+- [MongoDB Enterprise](#mongodb-enterprise)
 - [Windows Defender Firewall prompt](#windows-defender-firewall-prompt)
 - [Optimization tips](#optimization-tips)
 - [Changelog](#changelog)
@@ -21,17 +21,19 @@ using var runner = await MongoRunner.RunAsync();
 Console.WriteLine(runner.ConnectionString);
 ```
 
-Use the connection string to access the MongoDB server. It will be automatically be stopped and cleaned up when the `runner` is disposed. You can pass options to customize the server, such as the data directory, port, and replica set configuration. More details can be found in the [usage section](#usage).
+Use the resulting connection string to access the MongoDB server. It will automatically be stopped and cleaned up when the `runner` is disposed. You can pass options to customize the server, such as the data directory, port, and replica set configuration. More details can be found in the [usage section](#usage).
 
-Overall, this library provides:
-- Multiple ephemeral and **isolated MongoDB databases** for running tests.l
+List of features and capabilities:
+
+- Multiple ephemeral and **isolated MongoDB databases** for running tests.
 - A quick way to set up a MongoDB database for a local development environment.
 - Access to **MongoDB 6**, **7**, and **8**.
 - Access to **MongoDB Community** and **Enterprise editions**.
-- Support for Linux, macOS, and Windows.
 - Support for **single-node replica sets**, enabling transactions and change streams.
 - _mongoexport_ and _mongoimport_ tools for [exporting](https://www.mongodb.com/docs/database-tools/mongoexport/) and [importing](https://docs.mongodb.com/database-tools/mongoimport/) collections.
 - Support for .NET Standard 2.0, .NET Standard 2.1, .NET 8.0 and later.
+- Support for Linux, macOS, and Windows.
+- Supports **MongoDB C# driver version 2.x and 3.x**.
 
 This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/Mongo2Go) and expands upon its foundation.
 
@@ -42,7 +44,7 @@ This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/
 | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo/) | Install this package if you use MongoDB C# driver version 3.x. |
 | [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.v2.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo.v2/) | Install this package if you use MongoDB C# driver version 2.x. |
 
-## Getting started
+## Usage
 
 Use `MongoRunner.RunAsync()` or `MongoRunner.Run()` methods to create a disposable instance that provides access to a **MongoDB connection string**, **import**, and **export tools**. An optional `MongoRunnerOptions` parameter can be provided to customize the MongoDB server.
 
@@ -110,10 +112,10 @@ using (await var runner = MongoRunner.RunAsync(options))
     // Do something with the database
     database.CreateCollection("people");
 
-    // Export a collection to a file. Synchronous version is also available.
+    // Export a collection to a file. A synchronous version is also available.
     await runner.ExportAsync("default", "people", "/path/to/default.json");
 
-    // Import a collection from a file. Synchronous version is also available.
+    // Import a collection from a file. A synchronous version is also available.
     await runner.ImportAsync("default", "people", "/path/to/default.json");
 }
 ```
@@ -121,9 +123,16 @@ using (await var runner = MongoRunner.RunAsync(options))
 ## How it works
 
 * At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded (if not already present) and extracted to your local application data directory.
-* `MongoRunner.Run` always starts a new `mongod` process with a random available port,
-* The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`),
+* `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process with a random available port.
+* The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
 * By default, a unique temporary data directory is used.
+
+## MongoDB Enterprise
+
+Make sure you are allowed to use MongoDB Enterprise binaries in your project.
+The official documentation states:
+
+> MongoDB Enterprise Server is also available free of charge for evaluation and development purposes.
 
 ## Windows Defender Firewall prompt
 
@@ -132,12 +141,15 @@ This is because EphemeralMongo starts the `mongod.exe` process from your local a
 
 ## Optimization tips
 
-Avoid calling `MongoRunner.Run` concurrently, as this will create many `mongod` processes and make your operating system slower.
-Instead, try to use a single instance and reuse it - create as many databases as you need, one per test, for example.
+Avoid calling `MongoRunner.Run` or `MongoRunner.RunAsync` concurrently, as this will create many `mongod` processes and make your operating system slower. Instead, try to use a single instance and reuse it - create as many databases as you need, one per test, for example.
 
 Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d456e0be) for an implementation of a reusable `IMongoRunner`.
 
 ## Changelog
+
+### 3.0.0
+
+See the announcement.
 
 ### 2.0.0
 
