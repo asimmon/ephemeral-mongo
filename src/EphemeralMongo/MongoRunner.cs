@@ -37,9 +37,9 @@ public sealed class MongoRunner
         return runner.RunInternalAsync(cancellationToken);
     }
 
-    public static IMongoRunner Run(MongoRunnerOptions? options = null)
+    public static IMongoRunner Run(MongoRunnerOptions? options = null, CancellationToken cancellationToken = default)
     {
-        return RunAsync(options).ConfigureAwait(false).GetAwaiter().GetResult();
+        return RunAsync(options, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     private async Task<IMongoRunner> RunInternalAsync(CancellationToken cancellationToken)
@@ -228,7 +228,7 @@ public sealed class MongoRunner
 
         public string ConnectionString { get; }
 
-        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it")]
+        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it when multi-targeting")]
         public async Task ImportAsync(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
@@ -284,13 +284,12 @@ public sealed class MongoRunner
             }
         }
 
-        public void Import(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false)
+        public void Import(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
-            this.ImportAsync(database, collection, inputFilePath, additionalArguments, drop).ConfigureAwait(false).GetAwaiter().GetResult();
+            this.ImportAsync(database, collection, inputFilePath, additionalArguments, drop, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
-        [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
-        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it")]
+        [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it when multi-targeting")]
         public async Task ExportAsync(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
             if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
@@ -341,9 +340,9 @@ public sealed class MongoRunner
             }
         }
 
-        public void Export(string database, string collection, string outputFilePath, string[]? additionalArguments = null)
+        public void Export(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
-            this.ExportAsync(database, collection, outputFilePath, additionalArguments).ConfigureAwait(false).GetAwaiter().GetResult();
+            this.ExportAsync(database, collection, outputFilePath, additionalArguments, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public void Dispose()
