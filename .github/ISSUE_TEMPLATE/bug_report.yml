@@ -1,0 +1,52 @@
+name: 🐞 Bug Report
+description: Create a report about something that is not working
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of EphemeralMongo are you using?
+      placeholder: "Example: 2.0.0"
+    validations:
+      required: true
+  - type: input
+    id: packages
+    attributes:
+      label: Packages
+      description: What package(s) of EphemeralMongo are you using?
+      placeholder: "Example: EphemeralMongo.v2, EphemeralMongo8"
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      placeholder: "Example: Ubuntu 24.04, macOS 15"
+    validations:
+      required: true
+  - type: input
+    id: arch
+    attributes:
+      label: CPU architecture
+      description: What CPU architecture are you using?
+      placeholder: "Example: x64, ARM64"
+    validations:
+      required: false
+  - type: input
+    id: context
+    attributes:
+      label: Context
+      description: Where are you using EphemeralMongo?
+      placeholder: "Example: local environment, CI on GitHub Actions, or Azure Pipelines"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise description of what the bug is, ideally with a code sample or steps to reproduce the issue.
+    validations:
+      required: true
+
