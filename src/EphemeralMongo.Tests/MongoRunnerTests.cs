@@ -173,7 +173,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
 
 #pragma warning disable CA1849 // We want to test synchronous methods
             IMongoRunner runner2;
-            using (runner2 = MongoRunner.Run(options))
+            using (runner2 = MongoRunner.Run(options, testContextAccessor.Current.CancellationToken))
             {
                 var database = new MongoClient(runner2.ConnectionString).GetDatabase(databaseName);
 
@@ -182,7 +182,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 Assert.Null(personBeforeImport);
 
                 // Import the exported collection
-                runner2.Import(databaseName, collectionName, exportedFilePath, ["--jsonArray"]);
+                runner2.Import(databaseName, collectionName, exportedFilePath, ["--jsonArray"], drop: false, testContextAccessor.Current.CancellationToken);
 
                 // Verify that the document was imported successfully
                 var personAfterImport = database.GetCollection<Person>(collectionName).Find(FilterDefinition<Person>.Empty).FirstOrDefault(testContextAccessor.Current.CancellationToken);
