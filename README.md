@@ -166,7 +166,7 @@ var options = new MongoRunnerOptions
     UseSingleNodeReplicaSet = true
 };
 
-using var pool = new PooledMongoRunner(options);
+using var pool = new MongoRunnerPool(options);
 
 var runner1 = await pool.RentAsync();
 var runner2 = await pool.RentAsync();

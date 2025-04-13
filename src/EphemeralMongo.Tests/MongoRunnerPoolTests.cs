@@ -5,7 +5,7 @@ using MongoDB.Driver;
 
 namespace EphemeralMongo.Tests;
 
-public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
+public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 {
     [Fact]
     public async Task RentAsync_Returns_New_Runner_When_Pool_Is_Empty()
@@ -14,7 +14,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         var options = CreateDefaultOptions();
 
         // Act
-        using var pool = new PooledMongoRunner(options);
+        using var pool = new MongoRunnerPool(options);
         using var runner = await pool.RentAsync(testContextAccessor.Current.CancellationToken);
 
         // Assert
@@ -23,7 +23,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         Assert.Contains("mongodb://127.0.0.1", runner.ConnectionString);
 
         // Verify server is running
-        await this.PingServerAsync(runner.ConnectionString);
+        this.PingServerSuccessful(runner.ConnectionString);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         var options = CreateDefaultOptions();
 
         // Act
-        using var pool = new PooledMongoRunner(options);
+        using var pool = new MongoRunnerPool(options);
         using var runner = pool.Rent(testContextAccessor.Current.CancellationToken);
 
         // Assert
@@ -42,7 +42,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         Assert.Contains("mongodb://127.0.0.1", runner.ConnectionString);
 
         // Verify server is running
-        this.PingServer(runner.ConnectionString);
+        this.PingServerSuccessful(runner.ConnectionString);
     }
 
     [Fact]
@@ -50,22 +50,23 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, 2);
+        using var pool = new MongoRunnerPool(options, 2);
 
         // Act
         var runner1 = await pool.RentAsync(testContextAccessor.Current.CancellationToken);
-        var connectionString1 = runner1.ConnectionString;
-        pool.Return(runner1);
-
         var runner2 = await pool.RentAsync(testContextAccessor.Current.CancellationToken);
+
+        var connectionString1 = runner1.ConnectionString;
         var connectionString2 = runner2.ConnectionString;
+
+        pool.Return(runner1);
 
         // Assert
         Assert.Equal(connectionString1, connectionString2);
         Assert.Same(runner1, runner2);
 
         // Verify server is still running
-        await this.PingServerAsync(runner2.ConnectionString);
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
 
         // Cleanup
         pool.Return(runner2);
@@ -76,22 +77,22 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, 2);
+        using var pool = new MongoRunnerPool(options, 2);
 
         // Act
         var runner1 = pool.Rent(testContextAccessor.Current.CancellationToken);
-        var connectionString1 = runner1.ConnectionString;
-        pool.Return(runner1);
-
         var runner2 = pool.Rent(testContextAccessor.Current.CancellationToken);
+
+        var connectionString1 = runner1.ConnectionString;
         var connectionString2 = runner2.ConnectionString;
+
+        pool.Return(runner1);
 
         // Assert
         Assert.Equal(connectionString1, connectionString2);
         Assert.Same(runner1, runner2);
 
-        // Verify server is still running
-        this.PingServer(runner2.ConnectionString);
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
 
         // Cleanup
         pool.Return(runner2);
@@ -102,7 +103,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, 1);
+        using var pool = new MongoRunnerPool(options, 1);
 
         // Act
         var runner1 = await pool.RentAsync(testContextAccessor.Current.CancellationToken);
@@ -117,7 +118,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         Assert.NotSame(runner1, runner2);
 
         // Verify server is running for the new runner
-        await this.PingServerAsync(runner2.ConnectionString);
+        this.PingServerSuccessful(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -128,7 +129,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, 1);
+        using var pool = new MongoRunnerPool(options, 1);
 
         // Act
         var runner1 = pool.Rent(testContextAccessor.Current.CancellationToken);
@@ -143,7 +144,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         Assert.NotSame(runner1, runner2);
 
         // Verify server is running for the new runner
-        this.PingServer(runner2.ConnectionString);
+        this.PingServerSuccessful(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -154,11 +155,11 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options);
+        using var pool = new MongoRunnerPool(options);
         using var externalRunner = MongoRunner.Run(options, testContextAccessor.Current.CancellationToken);
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => pool.Return(externalRunner));
+        Assert.Throws<ArgumentException>(() => pool.Return(externalRunner));
     }
 
     [Fact]
@@ -166,14 +167,14 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, 1);
+        using var pool = new MongoRunnerPool(options, 1);
 
         // Act
         var runner = await pool.RentAsync(testContextAccessor.Current.CancellationToken);
         var connectionString = runner.ConnectionString;
 
         // Verify the server is running before returning
-        await this.PingServerAsync(connectionString);
+        this.PingServerSuccessful(connectionString);
 
         // Return the runner - it will be marked for disposal because it reached max rentals (1)
         pool.Return(runner);
@@ -183,10 +184,10 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
 
         // At this point, the original runner should be disposed
         // Trying to use it should throw a connection exception
-        await Assert.ThrowsAnyAsync<TimeoutException>(() => this.PingServerAsync(connectionString));
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString));
 
         // But the new runner should be working
-        await this.PingServerAsync(runner2.ConnectionString);
+        this.PingServerSuccessful(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -197,7 +198,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        var pool = new PooledMongoRunner(options);
+        var pool = new MongoRunnerPool(options);
 
         // Act
         var runner1 = pool.Rent(testContextAccessor.Current.CancellationToken);
@@ -206,15 +207,15 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         var connectionString2 = runner2.ConnectionString;
 
         // Assert clients connect successfully before disposal
-        this.PingServer(connectionString1);
-        this.PingServer(connectionString2);
+        this.PingServerSuccessful(connectionString1);
+        this.PingServerSuccessful(connectionString2);
 
         // Dispose the pool without returning the runners
         pool.Dispose();
 
         // Assert clients cannot connect anymore
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServer(connectionString1));
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServer(connectionString2));
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString2));
     }
 
     [Fact]
@@ -222,7 +223,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        var pool = new PooledMongoRunner(options);
+        var pool = new MongoRunnerPool(options);
         pool.Dispose();
 
         // Act & Assert
@@ -236,7 +237,7 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
     {
         // Arrange
         var options = CreateDefaultOptions();
-        var pool = new PooledMongoRunner(options);
+        var pool = new MongoRunnerPool(options);
         var runner = pool.Rent(testContextAccessor.Current.CancellationToken);
         pool.Dispose();
 
@@ -253,26 +254,26 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         var options = CreateDefaultOptions();
 
         // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PooledMongoRunner(options, maxRentals));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MongoRunnerPool(options, maxRentals));
     }
 
     [Fact]
     public void Constructor_Throws_When_Options_Is_Null()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new PooledMongoRunner(null!));
+        Assert.Throws<ArgumentNullException>(() => new MongoRunnerPool(null!));
     }
 
     [Fact]
     public void Pool_Creates_MaxRentalsPerRunner_Distinct_Instances()
     {
         // Arrange
-        const int maxRentalsPerRunner = 10;
+        const int maxRentalsPerRunner = 25;
         const int totalRentals = 100;
-        const int expectedDistinctInstances = 10;
+        const int expectedDistinctInstances = 4;
 
         var options = CreateDefaultOptions();
-        using var pool = new PooledMongoRunner(options, maxRentalsPerRunner);
+        using var pool = new MongoRunnerPool(options, maxRentalsPerRunner);
         var connectionStrings = new HashSet<string>(StringComparer.Ordinal);
 
         // Act
@@ -286,14 +287,29 @@ public class PooledMongoRunnerTests(ITestContextAccessor testContextAccessor)
         Assert.Equal(expectedDistinctInstances, connectionStrings.Count);
     }
 
-    private void PingServer(string connectionString)
+    [Fact]
+    public void PooledRunner_Dispose_DoesNothing_But_Return_DisposesWhenMaxed()
     {
-        GetAdminDatabase(connectionString).RunCommand<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: testContextAccessor.Current.CancellationToken);
+        // Arrange
+        var options = CreateDefaultOptions();
+        using var pool = new MongoRunnerPool(options, maxRentalsPerRunner: 2);
+        var runner = pool.Rent(testContextAccessor.Current.CancellationToken);
+        var connectionString = runner.ConnectionString;
+
+        // Act 1: Dispose the pooled runner should have no effect
+        runner.Dispose();
+        this.PingServerSuccessful(connectionString);
+
+        // Act 2: Once returned and no more rentals
+        pool.Return(runner);
+
+        // Assert 2: Server is no longer accessible
+        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString));
     }
 
-    private async Task PingServerAsync(string connectionString)
+    private void PingServerSuccessful(string connectionString)
     {
-        await GetAdminDatabase(connectionString).RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: testContextAccessor.Current.CancellationToken);
+        GetAdminDatabase(connectionString).RunCommand<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: testContextAccessor.Current.CancellationToken);
     }
 
     private static MongoRunnerOptions CreateDefaultOptions() => new();
