@@ -102,8 +102,7 @@ public sealed class MongoRunnerPool : IDisposable
 
             if (pooledRunner.Info.RentedBy.Count == 0 || pooledRunner.Info.TotalRentals >= this._maxRentalsPerRunner)
             {
-                this._runners.Remove(pooledRunner.Info);
-                disposeUnderlyingRunner = true;
+                disposeUnderlyingRunner = this._runners.Remove(pooledRunner.Info);
             }
         }
         finally

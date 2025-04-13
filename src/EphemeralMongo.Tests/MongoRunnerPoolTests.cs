@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using System.Runtime.InteropServices;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 #pragma warning disable EMEX0001 // Type is for evaluation purposes only
@@ -317,10 +318,13 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
     {
         var clientSettings = MongoClientSettings.FromConnectionString(connectionString);
 
-        clientSettings.ConnectTimeout = TimeSpan.FromSeconds(1);
-        clientSettings.HeartbeatTimeout = TimeSpan.FromSeconds(1);
-        clientSettings.SocketTimeout = TimeSpan.FromSeconds(1);
-        clientSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(1);
+        // Tests on Windows are a little slower than Linux and macOS
+        var timeout = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(2);
+
+        clientSettings.ConnectTimeout = timeout;
+        clientSettings.HeartbeatTimeout = timeout;
+        clientSettings.SocketTimeout = timeout;
+        clientSettings.ServerSelectionTimeout = timeout;
 
         return new MongoClient(clientSettings).GetDatabase("admin");
     }
