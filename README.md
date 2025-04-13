@@ -7,9 +7,9 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [How it works](#how-it-works)
-- [MongoDB Enterprise](#mongodb-enterprise)
+- [MongoDB Enterprise and in-memory storage engine](#mongodb-enterprise-and-in-memory-storage-engine)
 - [Windows Defender Firewall prompt](#windows-defender-firewall-prompt)
-- [Optimization tips](#optimization-tips)
+- [Reusing runners across tests](#reusing-runners-across-tests)
 - [Changelog](#changelog)
 
 ## About
@@ -123,11 +123,13 @@ using (await var runner = MongoRunner.RunAsync(options))
 ## How it works
 
 * At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded when needed (if not already present) and extracted to your local application data directory.
+* Official download links are retrieved from [this JSON file](https://downloads.mongodb.org/current.json) for the server and [this JSON file](https://downloads.mongodb.org/tools/db/release.json) for the tools.
+* SHA256 checksums are used to verify the integrity of the downloaded files.
 * `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process with a random available port.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
 * By default, a unique temporary data directory is used and deleted when the `runner` is disposed.
 
-## MongoDB Enterprise
+## MongoDB Enterprise and in-memory storage engine
 
 Make sure you are allowed to use MongoDB Enterprise binaries in your projects. The [official download page](https://www.mongodb.com/try/download/enterprise) states:
 
@@ -151,11 +153,39 @@ using var runner = await MongoRunner.RunAsync(options);
 On Windows, you might get a **Windows Defender Firewall prompt**.
 This is because EphemeralMongo starts the `mongod.exe` process from your local app data directory, and `mongod.exe` tries to open an available port.
 
-## Optimization tips
+## Reusing runners across tests
 
 Avoid calling `MongoRunner.Run` or `MongoRunner.RunAsync` concurrently, as this will create many `mongod` processes and make your operating system slower. Instead, try to use a single instance and reuse it - create as many databases as you need, one per test, for example.
 
-Check out [this gist](https://gist.github.com/asimmon/612b2d54f1a0d2b4e1115590d456e0be) for an implementation of a reusable `IMongoRunner`.
+For this, version 3.0.0 introduces a new *experimental* `PooledMongoRunner` class. Once created, you can rent and return `MongoRunner` instances. Once rented a certain number of times, new instances will be created. This way, `mongod` processes will be reused, but not too often. This will avoid uncontrolled usage of system resources.
+
+```csharp
+var options = new MongoRunnerOptions
+{
+    Version = MongoVersion.V7,
+    UseSingleNodeReplicaSet = true
+};
+
+using var pool = new MongoRunnerPool(options);
+
+var runner1 = await pool.RentAsync();
+var runner2 = await pool.RentAsync();
+
+try
+{
+    // Same connection string, same mongod process
+    Console.WriteLine(runner1.ConnectionString);
+    Console.WriteLine(runner2.ConnectionString);
+}
+finally
+{
+    pool.Return(runner1);
+    pool.Return(runner2);
+}
+
+// This is a new mongod process
+var runner3 = await pool.RentAsync();
+```
 
 ## Changelog
 
