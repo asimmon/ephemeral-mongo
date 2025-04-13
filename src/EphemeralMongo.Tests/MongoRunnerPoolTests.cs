@@ -63,7 +63,6 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 
         // Assert
         Assert.Equal(connectionString1, connectionString2);
-        Assert.Same(runner1, runner2);
 
         // Verify server is still running
         Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
@@ -90,7 +89,6 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 
         // Assert
         Assert.Equal(connectionString1, connectionString2);
-        Assert.Same(runner1, runner2);
 
         Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
 
@@ -301,6 +299,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         this.PingServerSuccessful(connectionString);
 
         // Act 2: Once returned and no more rentals
+        pool.Return(runner);
         pool.Return(runner);
 
         // Assert 2: Server is no longer accessible

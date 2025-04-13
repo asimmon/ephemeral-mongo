@@ -6,14 +6,16 @@ namespace EphemeralMongo;
 [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it when multi-targeting")]
 public sealed class MongoRunnerPool : IDisposable
 {
+    private readonly Guid _id;
     private readonly MongoRunnerOptions _options;
     private readonly int _maxRentalsPerRunner;
     private readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
-    private readonly HashSet<PooledMongoRunner> _pooledRunners = [];
-    private bool _isDisposed;
+    private readonly HashSet<PooledMongoRunnerInfo> _runners = [];
+    private int _isDisposed;
 
     public MongoRunnerPool(MongoRunnerOptions options, int maxRentalsPerRunner = 100)
     {
+        this._id = Guid.NewGuid();
         this._options = options ?? throw new ArgumentNullException(nameof(options));
         this._maxRentalsPerRunner = maxRentalsPerRunner < 1
             ? throw new ArgumentOutOfRangeException(nameof(maxRentalsPerRunner), "Maximum rentals per runner must be greater than 0")
@@ -27,28 +29,26 @@ public sealed class MongoRunnerPool : IDisposable
 
     private async Task<PooledMongoRunner> RentInternalAsync(CancellationToken cancellationToken)
     {
+        if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+        {
+            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+        }
+
         await this._mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            if (this._isDisposed)
+            if (this._runners.FirstOrDefault(r => r.TotalRentals < this._maxRentalsPerRunner) is { } availableRunner)
             {
-                throw new ObjectDisposedException(nameof(MongoRunnerPool));
-            }
-
-            if (this._pooledRunners.FirstOrDefault(r => r.TotalRentals < this._maxRentalsPerRunner) is { } availablePooledRunner)
-            {
-                availablePooledRunner.ReferenceCount++;
-                availablePooledRunner.TotalRentals++;
-
-                return availablePooledRunner;
+                availableRunner.TotalRentals++;
+                return new PooledMongoRunner(availableRunner);
             }
 
             var underlyingRunner = await MongoRunner.RunAsync(this._options, cancellationToken).ConfigureAwait(false);
-            var pooledRunner = new PooledMongoRunner(this, underlyingRunner);
-            this._pooledRunners.Add(pooledRunner);
+            var runnerInfo = new PooledMongoRunnerInfo(underlyingRunner, this._id);
+            this._runners.Add(runnerInfo);
 
-            return pooledRunner;
+            return new PooledMongoRunner(runnerInfo);
         }
         finally
         {
@@ -58,38 +58,7 @@ public sealed class MongoRunnerPool : IDisposable
 
     public IMongoRunner Rent(CancellationToken cancellationToken = default)
     {
-        return this.RentInternal(cancellationToken);
-    }
-
-    private PooledMongoRunner RentInternal(CancellationToken cancellationToken)
-    {
-        this._mutex.Wait(cancellationToken);
-
-        try
-        {
-            if (this._isDisposed)
-            {
-                throw new ObjectDisposedException(nameof(MongoRunnerPool));
-            }
-
-            if (this._pooledRunners.FirstOrDefault(r => r.TotalRentals < this._maxRentalsPerRunner) is { } availablePooledRunner)
-            {
-                availablePooledRunner.ReferenceCount++;
-                availablePooledRunner.TotalRentals++;
-
-                return availablePooledRunner;
-            }
-
-            var underlyingRunner = MongoRunner.Run(this._options, cancellationToken);
-            var pooledRunner = new PooledMongoRunner(this, underlyingRunner);
-            this._pooledRunners.Add(pooledRunner);
-
-            return pooledRunner;
-        }
-        finally
-        {
-            this._mutex.Release();
-        }
+        return this.RentAsync(cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     public void Return(IMongoRunner runner)
@@ -99,7 +68,17 @@ public sealed class MongoRunnerPool : IDisposable
             throw new ArgumentNullException(nameof(runner));
         }
 
-        if (runner is not PooledMongoRunner pooledRunner || pooledRunner.Pool != this)
+        if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+        {
+            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+        }
+
+        if (runner is not PooledMongoRunner pooledRunner)
+        {
+            throw new ArgumentException("The returned runner was not pooled", nameof(runner));
+        }
+
+        if (pooledRunner.Info.ParentPoolId != this._id)
         {
             throw new ArgumentException("The returned runner was not rented from this pool", nameof(runner));
         }
@@ -115,21 +94,15 @@ public sealed class MongoRunnerPool : IDisposable
 
         try
         {
-            if (this._isDisposed)
+            if (!pooledRunner.Info.RentedBy.Remove(pooledRunner.Id))
             {
-                throw new ObjectDisposedException(nameof(MongoRunnerPool));
-            }
-
-            if (!this._pooledRunners.Contains(pooledRunner))
-            {
+                // already returned
                 return;
             }
 
-            pooledRunner.ReferenceCount--;
-
-            if (pooledRunner.ReferenceCount <= 0 || pooledRunner.TotalRentals >= this._maxRentalsPerRunner)
+            if (pooledRunner.Info.RentedBy.Count == 0 || pooledRunner.Info.TotalRentals >= this._maxRentalsPerRunner)
             {
-                this._pooledRunners.Remove(pooledRunner);
+                this._runners.Remove(pooledRunner.Info);
                 disposeUnderlyingRunner = true;
             }
         }
@@ -140,32 +113,25 @@ public sealed class MongoRunnerPool : IDisposable
 
         if (disposeUnderlyingRunner)
         {
-            pooledRunner.UnderlyingRunner.Dispose();
+            pooledRunner.Info.UnderlyingRunner.Dispose();
         }
     }
 
     public void Dispose()
     {
-        if (this._isDisposed)
+        if (Interlocked.CompareExchange(ref this._isDisposed, 1, 0) == 1)
         {
             return;
         }
 
-        List<PooledMongoRunner>? runnersToDispose;
+        List<PooledMongoRunnerInfo>? runnersToDispose;
 
         this._mutex.Wait();
 
         try
         {
-            if (this._isDisposed)
-            {
-                return;
-            }
-
-            this._isDisposed = true;
-
-            runnersToDispose = [.. this._pooledRunners];
-            this._pooledRunners.Clear();
+            runnersToDispose = [.. this._runners];
+            this._runners.Clear();
         }
         finally
         {
@@ -201,36 +167,51 @@ public sealed class MongoRunnerPool : IDisposable
         }
     }
 
-    private sealed class PooledMongoRunner(MongoRunnerPool pool, IMongoRunner underlyingRunner) : IMongoRunner
+    private sealed class PooledMongoRunnerInfo(IMongoRunner underlyingRunner, Guid parentPoolId)
     {
-        public MongoRunnerPool Pool { get; } = pool;
-
         public IMongoRunner UnderlyingRunner { get; } = underlyingRunner;
 
-        public int ReferenceCount { get; set; } = 1;
+        public Guid ParentPoolId { get; } = parentPoolId;
 
         public int TotalRentals { get; set; } = 1;
 
-        public string ConnectionString => this.UnderlyingRunner.ConnectionString;
+        public HashSet<Guid> RentedBy { get; } = [];
+    }
+
+    private sealed class PooledMongoRunner : IMongoRunner
+    {
+        public PooledMongoRunner(PooledMongoRunnerInfo info)
+        {
+            this.Id = Guid.NewGuid();
+            this.Info = info;
+
+            info.RentedBy.Add(this.Id);
+        }
+
+        public Guid Id { get; }
+
+        public PooledMongoRunnerInfo Info { get; }
+
+        public string ConnectionString => this.Info.UnderlyingRunner.ConnectionString;
 
         public Task ImportAsync(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
-            return this.UnderlyingRunner.ImportAsync(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
+            return this.Info.UnderlyingRunner.ImportAsync(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
         }
 
         public void Import(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
-            this.UnderlyingRunner.Import(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
+            this.Info.UnderlyingRunner.Import(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
         }
 
         public Task ExportAsync(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
-            return this.UnderlyingRunner.ExportAsync(database, collection, outputFilePath, additionalArguments, cancellationToken);
+            return this.Info.UnderlyingRunner.ExportAsync(database, collection, outputFilePath, additionalArguments, cancellationToken);
         }
 
         public void Export(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
-            this.UnderlyingRunner.Export(database, collection, outputFilePath, additionalArguments, cancellationToken);
+            this.Info.UnderlyingRunner.Export(database, collection, outputFilePath, additionalArguments, cancellationToken);
         }
 
         public void Dispose()
