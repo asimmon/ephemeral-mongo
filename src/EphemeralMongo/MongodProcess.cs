@@ -150,7 +150,7 @@ internal sealed class MongodProcess : BaseMongoProcess
         void OnProcessExited(object? sender, EventArgs e)
         {
             isReplicaSetReadyTcs.TrySetResult(false);
-            isReplicaSetReadyTcs.TrySetResult(false);
+            isTransactionReadyTcs.TrySetResult(false);
         }
 
         void OnClusterDescriptionChanged(ClusterDescriptionChangedEvent evt)
