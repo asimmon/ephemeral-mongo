@@ -62,7 +62,7 @@ public sealed class HttpTransport
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"An error occurred while downloading the file from {url} to {filePath}", ex);
+            throw new EphemeralMongoException($"An error occurred while downloading the file from {url} to {filePath}", ex);
         }
     }
 
@@ -88,9 +88,9 @@ public sealed class HttpTransport
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"An error occurred while parsing {url} as a JSON response", ex);
+            throw new EphemeralMongoException($"An error occurred while parsing {url} as a JSON response", ex);
         }
 
-        return value ?? throw new InvalidOperationException($"An error occurred while parsing {url} as a JSON response");
+        return value ?? throw new EphemeralMongoException($"An error occurred while parsing {url} as a JSON response");
     }
 }

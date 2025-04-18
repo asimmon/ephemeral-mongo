@@ -202,6 +202,25 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
             File.Delete(exportedFilePath);
         }
     }
+    [Fact]
+    public async Task Run_Fails_When_InvalidArgument_And_Provides_Details_In_Exception()
+    {
+        var options = new MongoRunnerOptions
+        {
+            Version = MongoVersion.V8,
+            StandardOutputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
+            AdditionalArguments = ["--invalid-argument"],
+        };
+
+        var ex = await Assert.ThrowsAsync<EphemeralMongoException>(async () =>
+        {
+            using var _ = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken);
+        });
+
+        testOutputHelper.WriteLine(ex.Message);
+        Assert.Contains("unrecognised option '--invalid-argument'", ex.Message);
+    }
 
     private void MongoMessageLogger(string message)
     {
