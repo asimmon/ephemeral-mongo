@@ -1,4 +1,7 @@
 #nullable enable
+EphemeralMongo.EphemeralMongoException
+EphemeralMongo.EphemeralMongoException.EphemeralMongoException(string! message) -> void
+EphemeralMongo.EphemeralMongoException.EphemeralMongoException(string! message, System.Exception! innerException) -> void
 EphemeralMongo.HttpTransport
 EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpClient! httpClient) -> void
 EphemeralMongo.HttpTransport.HttpTransport(System.Net.Http.HttpMessageHandler! handler) -> void

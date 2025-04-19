@@ -30,7 +30,7 @@ internal static class FileCompressionHelper
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to extract zip file {archiveFilePath} to {destinationDirectory}", ex);
+            throw new EphemeralMongoException($"Failed to extract zip file {archiveFilePath} to {destinationDirectory}", ex);
         }
     }
 
@@ -48,7 +48,7 @@ internal static class FileCompressionHelper
 
         if (Process.Start(processStartInfo) is not { } process)
         {
-            throw new InvalidOperationException($"Failed to start the tar process to extract {archiveFilePath} to {destinationDirectory}");
+            throw new EphemeralMongoException($"Failed to start the tar process to extract {archiveFilePath} to {destinationDirectory}");
         }
 
         try
@@ -95,7 +95,7 @@ internal static class FileCompressionHelper
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to extract tar.gz file {archiveFilePath} to {destinationDirectory}", ex);
+            throw new EphemeralMongoException($"Failed to extract tar.gz file {archiveFilePath} to {destinationDirectory}", ex);
         }
     }
 }

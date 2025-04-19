@@ -63,10 +63,10 @@ internal static class MongoExecutableDownloader
             var mongodVersions = await options.Transport.GetFromJsonAsync<MongoVersionsDto>("https://downloads.mongodb.org/current.json", cancellationToken).ConfigureAwait(false);
 
             var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
-                ?? throw new InvalidOperationException($"Could not find a production release for MongoDB major version {majorVersion}");
+                ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB major version {majorVersion}");
 
             var mongodDownload = mongodVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Edition == edition && x.Target == target)
-                ?? throw new InvalidOperationException($"Could not find a production release for MongoDB architecture {architecture}, edition {edition}, and target {target}");
+                ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB architecture {architecture}, edition {edition}, and target {target}");
 
             var exeDirPath = Path.Combine(baseExeDirPath, mongodVersion.Version);
             var exeFilePath = Path.Combine(exeDirPath, MongodExeFileName);
@@ -95,14 +95,14 @@ internal static class MongoExecutableDownloader
                 var tmpUncompressedFirstDirPath = Directory.GetDirectories(tmpUncompressDirPath);
                 if (tmpUncompressedFirstDirPath.Length != 1)
                 {
-                    throw new InvalidOperationException($"There should be only one directory in {tmpUncompressDirPath}, but found {tmpUncompressedFirstDirPath.Length}");
+                    throw new EphemeralMongoException($"There should be only one directory in {tmpUncompressDirPath}, but found {tmpUncompressedFirstDirPath.Length}");
                 }
 
                 var tmpExeDirPath = Path.Combine(tmpUncompressedFirstDirPath[0], "bin");
                 var tmpExeFilePath = Path.Combine(tmpExeDirPath, MongodExeFileName);
                 if (!File.Exists(tmpExeFilePath))
                 {
-                    throw new InvalidOperationException($"The executable file {tmpExeFilePath} could not be copied to {exeFilePath} because it does not exist");
+                    throw new EphemeralMongoException($"The executable file {tmpExeFilePath} could not be copied to {exeFilePath} because it does not exist");
                 }
 
                 Directory.CreateDirectory(exeDirPath);
@@ -173,10 +173,10 @@ internal static class MongoExecutableDownloader
             var mongoToolsVersions = await options.Transport.GetFromJsonAsync<ToolsVersionsDto>("https://downloads.mongodb.org/tools/db/release.json", cancellationToken).ConfigureAwait(false);
 
             var mongoToolsVersion = mongoToolsVersions.Versions.FirstOrDefault()
-                ?? throw new InvalidOperationException($"Could not find the latest MongoDB tools version");
+                ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version");
 
             var mongoToolsDownload = mongoToolsVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Name == target)
-                ?? throw new InvalidOperationException($"Could not find the latest MongoDB tools version for architecture {architecture} and target {target}");
+                ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version for architecture {architecture} and target {target}");
 
             var exeDirPath = Path.Combine(baseExeDirPath, mongoToolsVersion.Version);
             var mongoImportExeFilePath = Path.Combine(exeDirPath, MongoImportExeFileName);
@@ -207,7 +207,7 @@ internal static class MongoExecutableDownloader
                 var tmpUncompressedFirstDirPath = Directory.GetDirectories(tmpUncompressDirPath);
                 if (tmpUncompressedFirstDirPath.Length != 1)
                 {
-                    throw new InvalidOperationException($"There should be only one directory in {tmpUncompressDirPath}, but found {tmpUncompressedFirstDirPath.Length}");
+                    throw new EphemeralMongoException($"There should be only one directory in {tmpUncompressDirPath}, but found {tmpUncompressedFirstDirPath.Length}");
                 }
 
                 var tmpMongoImportExeFilePath = Path.Combine(tmpUncompressedFirstDirPath[0], "bin", MongoImportExeFileName);
@@ -215,7 +215,7 @@ internal static class MongoExecutableDownloader
 
                 if (!File.Exists(tmpMongoImportExeFilePath) || !File.Exists(tmpMongoExportExeFilePath))
                 {
-                    throw new InvalidOperationException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
+                    throw new EphemeralMongoException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
                 }
 
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
@@ -263,7 +263,7 @@ internal static class MongoExecutableDownloader
         }
         catch (IOException ex)
         {
-            throw new InvalidOperationException($"The directory {exeDirPath} did not contain the expected executable file {MongodExeFileName} and could not be deleted. Please delete it first.", ex);
+            throw new EphemeralMongoException($"The directory {exeDirPath} did not contain the expected executable file {MongodExeFileName} and could not be deleted. Please delete it first.", ex);
         }
 
         return null;
@@ -292,7 +292,7 @@ internal static class MongoExecutableDownloader
         }
         catch (IOException ex)
         {
-            throw new InvalidOperationException($"The directory {exeDirPath} did not contain the expected executable files {MongoImportExeFileName} and {MongoExportExeFileName} and could not be deleted. Please delete it first.", ex);
+            throw new EphemeralMongoException($"The directory {exeDirPath} did not contain the expected executable files {MongoImportExeFileName} and {MongoExportExeFileName} and could not be deleted. Please delete it first.", ex);
         }
 
         return null;

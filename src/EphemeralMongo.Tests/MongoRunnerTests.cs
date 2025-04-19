@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,7 +12,7 @@ namespace EphemeralMongo.Tests;
 public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAccessor testContextAccessor)
 {
     [Fact]
-    public async Task Run_Fails_When_BinaryDirectory_Does_Not_Exist()
+    public async Task StartMongo_WithNonExistentBinaryDirectory_ThrowsFileNotFoundException()
     {
         var options = new MongoRunnerOptions
         {
@@ -39,7 +41,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     }
 
     [Fact]
-    public async Task Run_Cleans_Up_Temporary_Data_Directory()
+    public async Task StartMongo_WithTemporaryDataDirectory_CleansUpOldDirectories()
     {
         var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
@@ -111,7 +113,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     [InlineData(true, MongoVersion.V6, MongoEdition.Enterprise)]
     [InlineData(true, MongoVersion.V7, MongoEdition.Enterprise)]
     [InlineData(true, MongoVersion.V8, MongoEdition.Enterprise)]
-    public async Task Import_Export_Works(bool replset, MongoVersion version, MongoEdition edition)
+    public async Task MongoOperations_ImportAndExport_SucceedsAcrossInstances(bool replset, MongoVersion version, MongoEdition edition)
     {
         if (version is MongoVersion.V6 or MongoVersion.V7 && edition == MongoEdition.Enterprise && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
@@ -200,6 +202,62 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
         finally
         {
             File.Delete(exportedFilePath);
+        }
+    }
+
+    [Fact]
+    public async Task StartMongo_WithInvalidArgument_ThrowsExceptionWithDetails()
+    {
+        var options = new MongoRunnerOptions
+        {
+            Version = MongoVersion.V8,
+            StandardOutputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
+            AdditionalArguments = ["--invalid-argument"],
+        };
+
+        var ex = await Assert.ThrowsAsync<EphemeralMongoException>(async () =>
+        {
+            using var _ = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken);
+        });
+
+        testOutputHelper.WriteLine(ex.Message);
+        Assert.Contains("unrecognised option '--invalid-argument'", ex.Message);
+    }
+
+    [Fact]
+    public async Task StartMongo_WithPortInUse_ThrowsExceptionWithDetails()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, port: 0);
+
+        try
+        {
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+            var options = new MongoRunnerOptions
+            {
+                Version = MongoVersion.V8,
+                StandardOutputLogger = testOutputHelper.WriteLine,
+                StandardErrorLogger = testOutputHelper.WriteLine,
+                AdditionalArguments = ["--quiet"],
+                MongoPort = port,
+            };
+
+            var ex = await Assert.ThrowsAsync<EphemeralMongoException>(async () =>
+            {
+                using var _ = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken);
+            });
+
+            testOutputHelper.WriteLine(ex.Message);
+
+            // Full message looks like this:
+            // The MongoDB process '<omitted>' exited unexpectedly with code 48. Output:{"t":{"$date":"2025-04-18T22:44:09.346-04:00"},"s":"E",  "c":"CONTROL",  "id":20568,   "ctx":"initandlisten","msg":"Error setting up listener","attr":{"error":{"code":9001,"codeName":"SocketException","errmsg":"127.0.0.1:60912 :: caused by :: setup bind :: caused by :: An attempt was made to access a socket in a way forbidden by its access permissions."}}}
+            Assert.Contains("SocketException", ex.Message);
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace EphemeralMongo;
 
@@ -18,6 +19,8 @@ internal abstract class BaseMongoProcess : IMongoProcess
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
 
         this.Process = new Process

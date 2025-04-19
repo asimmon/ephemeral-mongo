@@ -1,5 +1,8 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text;
+using System.Text.Json;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Events;
@@ -11,6 +14,12 @@ internal sealed class MongodProcess : BaseMongoProcess
 {
     private const string ConnectionReadySentence = "waiting for connections";
 
+    // https://github.com/search?q=%22STATUS_DLL_NOT_FOUND%22+%223221225781%22&type=code
+    [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "STATUS_DLL_NOT_FOUND is a constant from the Windows API")]
+    private const uint STATUS_DLL_NOT_FOUND = 3221225781; // "-1073741515" as a signed int returned by Process.ExitCode
+
+    private readonly StringBuilder _startupErrors = new StringBuilder();
+
     public MongodProcess(MongoRunnerOptions options, string executablePath, string[] arguments)
         : base(options, executablePath, arguments)
     {
@@ -18,11 +27,24 @@ internal sealed class MongodProcess : BaseMongoProcess
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        await this.StartAndWaitForConnectionReadinessAsync(cancellationToken).ConfigureAwait(false);
+        this.Process.OutputDataReceived += this.OnOutputDataReceivedCaptureStartupErrors;
+        this.Process.ErrorDataReceived += this.OnErrorDataReceivedCaptureStartupErrors;
 
-        if (this.Options.UseSingleNodeReplicaSet)
+        try
         {
-            await this.ConfigureAndWaitForReplicaSetReadinessAsync(cancellationToken).ConfigureAwait(false);
+            await this.StartAndWaitForConnectionReadinessAsync(cancellationToken).ConfigureAwait(false);
+
+            if (this.Options.UseSingleNodeReplicaSet)
+            {
+                await this.ConfigureAndWaitForReplicaSetReadinessAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            this.Process.OutputDataReceived -= this.OnOutputDataReceivedCaptureStartupErrors;
+            this.Process.ErrorDataReceived -= this.OnErrorDataReceivedCaptureStartupErrors;
+
+            this._startupErrors.Clear();
         }
     }
 
@@ -45,11 +67,7 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         void OnProcessExited(object? sender, EventArgs e)
         {
-            var exception = this.Process.ExitCode == 0
-                ? new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly.")
-                : new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly with code {this.Process.ExitCode}.");
-
-            isReadyToAcceptConnectionsTcs.TrySetException(exception);
+            isReadyToAcceptConnectionsTcs.TrySetResult(false);
         }
 
         this.Process.OutputDataReceived += OnOutputDataReceivedForConnectionReadiness;
@@ -80,6 +98,8 @@ internal sealed class MongodProcess : BaseMongoProcess
 
                     throw new TimeoutException(timeoutMessage, ex);
                 }
+
+                this.HandleUnexpectedProcessExit();
             }
         }
         finally
@@ -89,6 +109,35 @@ internal sealed class MongodProcess : BaseMongoProcess
         }
     }
 
+    private void HandleUnexpectedProcessExit()
+    {
+        if (this.Process.HasExited)
+        {
+            // WaitForExit ensure that all output is flushed before we throw the exception,
+            // ensuring we asynchronously capture all standard output and error messages.
+            this.Process.WaitForExit();
+            throw this.CreateExceptionFromUnexpectedProcessExit();
+        }
+    }
+
+    private EphemeralMongoException CreateExceptionFromUnexpectedProcessExit()
+    {
+        var exitCode = (uint)this.Process.ExitCode;
+        var processDescription = $"{this.Process.StartInfo.FileName} {this.Process.StartInfo.Arguments}";
+        var startupErrors = this._startupErrors.ToString();
+        var startupErrorsMessage = string.IsNullOrWhiteSpace(startupErrors) ? string.Empty : $" Output: {startupErrors}";
+
+        return exitCode switch
+        {
+            0 => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly.{startupErrorsMessage}"),
+
+            // Happens on Windows for MongoDB Enterprise edition when sasl2.dll is missing
+            STATUS_DLL_NOT_FOUND => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}. This is likely due to a missing DLL.{startupErrorsMessage}"),
+
+            _ => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}.{startupErrorsMessage}")
+        };
+    }
+
     private async Task ConfigureAndWaitForReplicaSetReadinessAsync(CancellationToken cancellationToken)
     {
         var isReplicaSetReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -96,12 +145,8 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         void OnProcessExited(object? sender, EventArgs e)
         {
-            var exception = this.Process.ExitCode == 0
-                ? new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly.")
-                : new InvalidOperationException($"The process MongoDB process {this.Process.Id} exited unexpectedly with code {this.Process.ExitCode}.");
-
-            isReplicaSetReadyTcs.TrySetException(exception);
-            isTransactionReadyTcs.TrySetException(exception);
+            isReplicaSetReadyTcs.TrySetResult(false);
+            isTransactionReadyTcs.TrySetResult(false);
         }
 
         void OnClusterDescriptionChanged(ClusterDescriptionChangedEvent evt)
@@ -202,11 +247,62 @@ internal sealed class MongodProcess : BaseMongoProcess
 
                     throw new TimeoutException(timeoutMessage);
                 }
+
+                this.HandleUnexpectedProcessExit();
             }
         }
         finally
         {
             this.Process.Exited -= OnProcessExited;
+        }
+    }
+
+    private void OnOutputDataReceivedCaptureStartupErrors(object sender, DataReceivedEventArgs args)
+    {
+        if (args.Data == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Here's the kind of document we're trying to parse:
+            // {
+            //   "t": {
+            //     "$date": "2025-04-18T22:15:02.064-04:00"
+            //   },
+            //   "s": "E",
+            //   "c": "CONTROL",
+            //   "id": 20568,
+            //   "ctx": "initandlisten",
+            //   "msg": "Error setting up listener",
+            //   "attr": {
+            //     "error": {
+            //       "code": 9001,
+            //       "codeName": "SocketException",
+            //       "errmsg": "127.0.0.1:58905 :: caused by :: setup bind :: caused by :: An attempt was made to access a socket in a way forbidden by its access permissions."
+            //     }
+            //   }
+            // }
+            using var document = JsonDocument.Parse(args.Data);
+
+            if (document.RootElement.TryGetProperty("s", out var sevEl) && sevEl.ValueKind == JsonValueKind.String && sevEl.GetString() is "E" or "F")
+            {
+                this._startupErrors.AppendLine(args.Data);
+            }
+        }
+        catch
+        {
+            // Startup error messages (like invalid arguments) are also sent to standard output in plain text, not as structured JSON
+            this._startupErrors.AppendLine(args.Data);
+        }
+    }
+
+    private void OnErrorDataReceivedCaptureStartupErrors(object sender, DataReceivedEventArgs args)
+    {
+        if (args.Data != null)
+        {
+            this._startupErrors.AppendLine(args.Data);
         }
     }
 }

@@ -33,12 +33,12 @@ internal static class FileHashHelper
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to compute SHA256 hash for file {filePath}", ex);
+            throw new EphemeralMongoException($"Failed to compute SHA256 hash for file {filePath}", ex);
         }
 
         if (!hash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"The hash of the downloaded file {filePath} does not match the expected hash. Expected: {expectedHash}, Actual: {hash}");
+            throw new EphemeralMongoException($"The hash of the downloaded file {filePath} does not match the expected hash. Expected: {expectedHash}, Actual: {hash}");
         }
 
 #if NETSTANDARD2_0
