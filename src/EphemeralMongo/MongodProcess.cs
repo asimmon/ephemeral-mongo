@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Events;
@@ -10,11 +10,7 @@ using MongoDB.Driver.Core.Servers;
 
 namespace EphemeralMongo;
 
-#if NET8_0_OR_GREATER
-internal sealed partial class MongodProcess : BaseMongoProcess
-#else
 internal sealed class MongodProcess : BaseMongoProcess
-#endif
 {
     private const string ConnectionReadySentence = "waiting for connections";
 
@@ -268,16 +264,36 @@ internal sealed class MongodProcess : BaseMongoProcess
             return;
         }
 
-        if (LogMessageRegex.Match(args.Data) is { Success: true } match)
+        try
         {
-            if (match.Groups["severity"].Value is "E" or "F")
+            // Here's the kind of document we're trying to parse:
+            // {
+            //   "t": {
+            //     "$date": "2025-04-18T22:15:02.064-04:00"
+            //   },
+            //   "s": "E",
+            //   "c": "CONTROL",
+            //   "id": 20568,
+            //   "ctx": "initandlisten",
+            //   "msg": "Error setting up listener",
+            //   "attr": {
+            //     "error": {
+            //       "code": 9001,
+            //       "codeName": "SocketException",
+            //       "errmsg": "127.0.0.1:58905 :: caused by :: setup bind :: caused by :: An attempt was made to access a socket in a way forbidden by its access permissions."
+            //     }
+            //   }
+            // }
+            using var document = JsonDocument.Parse(args.Data);
+
+            if (document.RootElement.TryGetProperty("s", out var sevEl) && sevEl.ValueKind == JsonValueKind.String && sevEl.GetString() is "E" or "F")
             {
-                this._startupErrors.AppendLine(match.Groups["msg"].Value);
+                this._startupErrors.AppendLine(args.Data);
             }
         }
-        else
+        catch
         {
-            // Startup error messages (like invalid arguments) are also sent to standard output as plain text
+            // Startup error messages (like invalid arguments) are also sent to standard output in plain text, not as structured JSON
             this._startupErrors.AppendLine(args.Data);
         }
     }
@@ -289,20 +305,4 @@ internal sealed class MongodProcess : BaseMongoProcess
             this._startupErrors.AppendLine(args.Data);
         }
     }
-
-    // The regex is used to parse the log messages from MongoDB. I wanted to avoid a dependency on System.Text.Json.
-    // This works as long as message doesn't contain quotes, but I haven't seen that yet, especially in the startup errors messages.
-    // https://www.mongodb.com/docs/manual/reference/log-messages/
-#if NET8_0_OR_GREATER
-    private static readonly Regex LogMessageRegex = CreateLogMessageRegex();
-
-    [GeneratedRegex(
-        @"^\{""t"":\{""\$date"":""[^""]+""\},\s*""s"":""(?<severity>[^""]+)"",\s*""c"":""[^""]+"",\s*""id"":\d+,\s*""ctx"":""[^""]+"",\s*""msg"":""(?<msg>[^""]+)""",
-        RegexOptions.ExplicitCapture | RegexOptions.Singleline)]
-    private static partial Regex CreateLogMessageRegex();
-#else
-    private static readonly Regex LogMessageRegex = new Regex(
-        @"^\{""t"":\{""\$date"":""[^""]+""\},\s*""s"":""(?<severity>[^""]+)"",\s*""c"":""[^""]+"",\s*""id"":\d+,\s*""ctx"":""[^""]+"",\s*""msg"":""(?<msg>[^""]+)""",
-        RegexOptions.ExplicitCapture | RegexOptions.Singleline);
-#endif
 }
