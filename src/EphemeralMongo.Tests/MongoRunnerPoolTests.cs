@@ -317,15 +317,6 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
     private static IMongoDatabase GetAdminDatabase(string connectionString)
     {
         var clientSettings = MongoClientSettings.FromConnectionString(connectionString);
-
-        // Tests on Windows are a little slower than Linux and macOS
-        var timeout = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(2);
-
-        clientSettings.ConnectTimeout = timeout;
-        clientSettings.HeartbeatTimeout = timeout;
-        clientSettings.SocketTimeout = timeout;
-        clientSettings.ServerSelectionTimeout = timeout;
-
         return new MongoClient(clientSettings).GetDatabase("admin");
     }
 }
