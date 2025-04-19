@@ -32,7 +32,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="GitVersion.MsBuild" Condition=" '$(Configuration)' == 'Release' ">
+    <PackageReference Include="GitVersion.MsBuild" Condition=" '$(Configuration)' == 'Release' AND !$([MSBuild]::IsOsPlatform('OSX')) ">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
