@@ -313,9 +313,10 @@ file static class ProcessExtensions
     [SuppressMessage("Usage", "CA2249:Consider using \'string.Contains\' instead of \'string.IndexOf\'", Justification = "Not worth it due to multi-targeting")]
     public static async Task StartProcessWithRetryAsync(this Process process, CancellationToken cancellationToken)
     {
-        var retryCount = 3;
+        const int maxAttempts = 3;
+        const int retryDelayMs = 50;
 
-        while (retryCount > 0)
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             try
             {
@@ -324,10 +325,14 @@ file static class ProcessExtensions
             }
             // This exception rarely happens on Linux in CI during tests with high concurrency
             // System.ComponentModel.Win32Exception : An error occurred trying to start process '<omitted>/mongod' with working directory '<omitted>'. Text file busy
-            catch (Win32Exception ex) when (retryCount > 1 && ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0)
+            catch (Win32Exception ex) when (ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                retryCount--;
-                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                if (attempt == maxAttempts)
+                {
+                    throw;
+                }
+
+                await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
             }
         }
     }

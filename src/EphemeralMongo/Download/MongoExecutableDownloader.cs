@@ -245,6 +245,7 @@ internal static class MongoExecutableDownloader
         {
             try
             {
+                // An IO conflict happened in Windows CI where the file was edited by another process (multi-assembly testing)
 #if NETSTANDARD2_0
                 File.Create(lastCheckFilePath).Dispose();
 #else
@@ -256,18 +257,12 @@ internal static class MongoExecutableDownloader
             {
                 if (attempt == maxAttempts)
                 {
-                    // Rethrow on the last attempt
                     throw;
                 }
 
                 await Task.Delay(retryDelayMs).ConfigureAwait(false);
             }
         }
-    }
-
-    private static void UpdateLastCheckFile(string lastCheckFilePath)
-    {
-        File.Create(lastCheckFilePath).Dispose();
     }
 
     private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath)
