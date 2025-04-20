@@ -73,7 +73,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(exeFilePath))
             {
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return exeFilePath;
             }
 
@@ -119,7 +119,7 @@ internal static class MongoExecutableDownloader
                     }
                 }
 
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return exeFilePath;
             }
             finally
@@ -184,7 +184,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(mongoImportExeFilePath) && File.Exists(mongoExportExeFilePath))
             {
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
 
@@ -221,7 +221,7 @@ internal static class MongoExecutableDownloader
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
                 SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
 
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
             finally
@@ -233,6 +233,35 @@ internal static class MongoExecutableDownloader
         finally
         {
             SharedMutex.Release(baseExeDirName);
+        }
+    }
+
+    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath)
+    {
+        const int maxAttempts = 3;
+        const int retryDelayMs = 50;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+#if NETSTANDARD2_0
+                File.Create(lastCheckFilePath).Dispose();
+#else
+                await File.Create(lastCheckFilePath).DisposeAsync().ConfigureAwait(false);
+#endif
+                return;
+            }
+            catch (IOException)
+            {
+                if (attempt == maxAttempts)
+                {
+                    // Rethrow on the last attempt
+                    throw;
+                }
+
+                await Task.Delay(retryDelayMs).ConfigureAwait(false);
+            }
         }
     }
 
