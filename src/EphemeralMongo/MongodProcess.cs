@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
@@ -75,7 +76,7 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         try
         {
-            this.Process.Start();
+            await this.Process.StartProcessWithRetryAsync(cancellationToken).ConfigureAwait(false);
 
             this.Process.BeginOutputReadLine();
             this.Process.BeginErrorReadLine();
@@ -303,6 +304,36 @@ internal sealed class MongodProcess : BaseMongoProcess
         if (args.Data != null)
         {
             this._startupErrors.AppendLine(args.Data);
+        }
+    }
+}
+
+file static class ProcessExtensions
+{
+    [SuppressMessage("Usage", "CA2249:Consider using \'string.Contains\' instead of \'string.IndexOf\'", Justification = "Not worth it due to multi-targeting")]
+    public static async Task StartProcessWithRetryAsync(this Process process, CancellationToken cancellationToken)
+    {
+        const int maxAttempts = 3;
+        const int retryDelayMs = 50;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                process.Start();
+                return;
+            }
+            // This exception rarely happens on Linux in CI during tests with high concurrency
+            // System.ComponentModel.Win32Exception : An error occurred trying to start process '<omitted>/mongod' with working directory '<omitted>'. Text file busy
+            catch (Win32Exception ex) when (ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (attempt == maxAttempts)
+                {
+                    throw;
+                }
+
+                await Task.Delay(retryDelayMs, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

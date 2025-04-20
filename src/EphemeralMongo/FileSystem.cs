@@ -1,4 +1,6 @@
+#if !NET8_0_OR_GREATER
 using System.Diagnostics;
+#endif
 using System.Runtime.InteropServices;
 
 namespace EphemeralMongo;
@@ -32,44 +34,41 @@ internal sealed class FileSystem : IFileSystem
 
     public void MakeFileExecutable(string path)
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return;
+        }
+
+        try
         {
 #if NET8_0_OR_GREATER
-            try
+            const UnixFileMode executePermissions = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+
+            var unixFileMode = File.GetUnixFileMode(path);
+            var alreadyExecutable = (unixFileMode & executePermissions) != UnixFileMode.None;
+
+            if (!alreadyExecutable)
             {
-                var unixMode = File.GetUnixFileMode(path);
-                var alreadyExecutable = unixMode.HasFlag(UnixFileMode.UserExecute) || unixMode.HasFlag(UnixFileMode.GroupExecute) || unixMode.HasFlag(UnixFileMode.OtherExecute);
-                if (alreadyExecutable)
-                {
-                    return;
-                }
-            }
-            catch
-            {
-                // If test command fails (not found, etc.), fall through to chmod
+                File.SetUnixFileMode(path, unixFileMode | executePermissions);
             }
 #else
-            try
-            {
-                using var testProcess = Process.Start("test", "-x " + ProcessArgument.Escape(path));
-                testProcess?.WaitForExit();
+            using var test = Process.Start("test", "-x " + ProcessArgument.Escape(path));
+            test?.WaitForExit();
 
-                var alreadyExecutable = testProcess?.ExitCode == 0;
-                if (alreadyExecutable)
-                {
-                    return;
-                }
-            }
-            catch
+            var alreadyExecutable = test?.ExitCode == 0;
+            if (alreadyExecutable)
             {
-                // If test command fails (not found, etc.), fall through to chmod
+                return;
             }
-#endif
 
-            // Do not throw if exit code is not equal to zero.
-            // If there's something wrong with the path or permissions, we'll see it later.
             using var chmod = Process.Start("chmod", "+x " + ProcessArgument.Escape(path));
             chmod?.WaitForExit();
+#endif
+        }
+        catch
+        {
+            // Do not throw if something wrong happens
+            // If there's something wrong with the path or permissions, we'll see it later.
         }
     }
 }

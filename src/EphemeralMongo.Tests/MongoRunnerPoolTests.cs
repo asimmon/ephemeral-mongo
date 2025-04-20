@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Net;
+using System.Net.Sockets;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -24,7 +25,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         Assert.Contains("mongodb://127.0.0.1", runner.ConnectionString);
 
         // Verify server is running
-        this.PingServerSuccessful(runner.ConnectionString);
+        this.AssertServerUpAndReady(runner.ConnectionString);
     }
 
     [Fact]
@@ -43,7 +44,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         Assert.Contains("mongodb://127.0.0.1", runner.ConnectionString);
 
         // Verify server is running
-        this.PingServerSuccessful(runner.ConnectionString);
+        this.AssertServerUpAndReady(runner.ConnectionString);
     }
 
     [Fact]
@@ -66,7 +67,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         Assert.Equal(connectionString1, connectionString2);
 
         // Verify server is still running
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
+        AssertServerDown(connectionString1);
 
         // Cleanup
         pool.Return(runner2);
@@ -91,7 +92,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         // Assert
         Assert.Equal(connectionString1, connectionString2);
 
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
+        AssertServerDown(connectionString1);
 
         // Cleanup
         pool.Return(runner2);
@@ -117,7 +118,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         Assert.NotSame(runner1, runner2);
 
         // Verify server is running for the new runner
-        this.PingServerSuccessful(runner2.ConnectionString);
+        this.AssertServerUpAndReady(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -143,7 +144,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         Assert.NotSame(runner1, runner2);
 
         // Verify server is running for the new runner
-        this.PingServerSuccessful(runner2.ConnectionString);
+        this.AssertServerUpAndReady(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -173,7 +174,7 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         var connectionString = runner.ConnectionString;
 
         // Verify the server is running before returning
-        this.PingServerSuccessful(connectionString);
+        this.AssertServerUpAndReady(connectionString);
 
         // Return the runner - it will be marked for disposal because it reached max rentals (1)
         pool.Return(runner);
@@ -183,10 +184,10 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 
         // At this point, the original runner should be disposed
         // Trying to use it should throw a connection exception
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString));
+        AssertServerDown(connectionString);
 
         // But the new runner should be working
-        this.PingServerSuccessful(runner2.ConnectionString);
+        this.AssertServerUpAndReady(runner2.ConnectionString);
 
         // Cleanup
         pool.Return(runner2);
@@ -206,15 +207,15 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         var connectionString2 = runner2.ConnectionString;
 
         // Assert clients connect successfully before disposal
-        this.PingServerSuccessful(connectionString1);
-        this.PingServerSuccessful(connectionString2);
+        this.AssertServerUpAndReady(connectionString1);
+        this.AssertServerUpAndReady(connectionString2);
 
         // Dispose the pool without returning the runners
         pool.Dispose();
 
         // Assert clients cannot connect anymore
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString1));
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString2));
+        AssertServerDown(connectionString1);
+        AssertServerDown(connectionString2);
     }
 
     [Fact]
@@ -297,19 +298,41 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 
         // Act 1: Dispose the pooled runner should have no effect
         runner.Dispose();
-        this.PingServerSuccessful(connectionString);
+        this.AssertServerUpAndReady(connectionString);
 
         // Act 2: Once returned and no more rentals
         pool.Return(runner);
         pool.Return(runner);
 
         // Assert 2: Server is no longer accessible
-        Assert.ThrowsAny<TimeoutException>(() => this.PingServerSuccessful(connectionString));
+        AssertServerDown(connectionString);
     }
 
-    private void PingServerSuccessful(string connectionString)
+    private void AssertServerUpAndReady(string connectionString)
     {
         GetAdminDatabase(connectionString).RunCommand<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: testContextAccessor.Current.CancellationToken);
+    }
+
+    private static void AssertServerDown(string connectionString)
+    {
+        var url = new MongoUrl(connectionString);
+
+        TcpListener? listener = null;
+        try
+        {
+            listener = new TcpListener(IPAddress.Loopback, url.Server.Port);
+            listener.Start();
+
+            // As expected, the port is available, so the server is down
+        }
+        catch (SocketException ex)
+        {
+            Assert.Fail($"Server is still running on port {url.Server.Port}. Exception: {ex}");
+        }
+        finally
+        {
+            listener?.Stop();
+        }
     }
 
     private static MongoRunnerOptions CreateDefaultOptions() => new();
@@ -317,15 +340,6 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
     private static IMongoDatabase GetAdminDatabase(string connectionString)
     {
         var clientSettings = MongoClientSettings.FromConnectionString(connectionString);
-
-        // Tests on Windows are a little slower than Linux and macOS
-        var timeout = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(2);
-
-        clientSettings.ConnectTimeout = timeout;
-        clientSettings.HeartbeatTimeout = timeout;
-        clientSettings.SocketTimeout = timeout;
-        clientSettings.ServerSelectionTimeout = timeout;
-
         return new MongoClient(clientSettings).GetDatabase("admin");
     }
 }

@@ -73,7 +73,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(exeFilePath))
             {
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return exeFilePath;
             }
 
@@ -119,7 +119,7 @@ internal static class MongoExecutableDownloader
                     }
                 }
 
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return exeFilePath;
             }
             finally
@@ -184,7 +184,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(mongoImportExeFilePath) && File.Exists(mongoExportExeFilePath))
             {
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
 
@@ -221,7 +221,7 @@ internal static class MongoExecutableDownloader
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
                 SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
 
-                UpdateLastCheckFile(lastCheckFilePath);
+                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
             finally
@@ -236,9 +236,33 @@ internal static class MongoExecutableDownloader
         }
     }
 
-    private static void UpdateLastCheckFile(string lastCheckFilePath)
+    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath)
     {
-        File.Create(lastCheckFilePath).Dispose();
+        const int maxAttempts = 3;
+        const int retryDelayMs = 50;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                // An IO conflict happened in Windows CI where the file was edited by another process (multi-assembly testing)
+#if NETSTANDARD2_0
+                File.Create(lastCheckFilePath).Dispose();
+#else
+                await File.Create(lastCheckFilePath).DisposeAsync().ConfigureAwait(false);
+#endif
+                return;
+            }
+            catch (IOException)
+            {
+                if (attempt == maxAttempts)
+                {
+                    throw;
+                }
+
+                await Task.Delay(retryDelayMs).ConfigureAwait(false);
+            }
+        }
     }
 
     private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath)
