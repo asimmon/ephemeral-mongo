@@ -42,15 +42,15 @@ internal sealed class FileSystem : IFileSystem
         try
         {
 #if NET8_0_OR_GREATER
-            // const UnixFileMode executePermissions = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+            const UnixFileMode executePermissions = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
 
-            // var unixFileMode = File.GetUnixFileMode(path);
-            // var alreadyExecutable = (unixFileMode & executePermissions) != UnixFileMode.None;
+            var unixFileMode = File.GetUnixFileMode(path);
+            var alreadyExecutable = (unixFileMode & executePermissions) != UnixFileMode.None;
 
-            // if (!alreadyExecutable)
-            // {
-            //     File.SetUnixFileMode(path, unixFileMode | executePermissions);
-            // }
+            if (!alreadyExecutable)
+            {
+                File.SetUnixFileMode(path, unixFileMode | executePermissions);
+            }
 #else
             using var test = Process.Start("test", "-x " + ProcessArgument.Escape(path));
             test?.WaitForExit();
