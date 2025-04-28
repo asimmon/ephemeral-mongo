@@ -41,6 +41,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     }
 
     [Fact]
+    [Trait(XunitConstants.Category, XunitConstants.SlowOnWindows)]
     public async Task StartMongo_WithTemporaryDataDirectory_CleansUpOldDirectories()
     {
         var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -101,19 +102,38 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
     }
 
     [Theory]
-    [InlineData(false, MongoVersion.V6, MongoEdition.Community)]
-    [InlineData(false, MongoVersion.V7, MongoEdition.Community)]
-    [InlineData(false, MongoVersion.V8, MongoEdition.Community)]
-    [InlineData(false, MongoVersion.V6, MongoEdition.Enterprise)]
-    [InlineData(false, MongoVersion.V7, MongoEdition.Enterprise)]
-    [InlineData(false, MongoVersion.V8, MongoEdition.Enterprise)]
-    [InlineData(true, MongoVersion.V6, MongoEdition.Community)]
-    [InlineData(true, MongoVersion.V7, MongoEdition.Community)]
-    [InlineData(true, MongoVersion.V8, MongoEdition.Community)]
-    [InlineData(true, MongoVersion.V6, MongoEdition.Enterprise)]
-    [InlineData(true, MongoVersion.V7, MongoEdition.Enterprise)]
-    [InlineData(true, MongoVersion.V8, MongoEdition.Enterprise)]
-    public async Task MongoOperations_ImportAndExport_SucceedsAcrossInstances(bool replset, MongoVersion version, MongoEdition edition)
+    [Trait(XunitConstants.Category, XunitConstants.SlowOnWindows)]
+    [InlineData(MongoEdition.Community, false)]
+    [InlineData(MongoEdition.Enterprise, false)]
+    [InlineData(MongoEdition.Community, true)]
+    [InlineData(MongoEdition.Enterprise, true)]
+    public async Task Mongo6Operations_ImportAndExport_SucceedsAcrossInstances(MongoEdition edition, bool replset)
+    {
+        await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V6, edition, replset);
+    }
+
+    [Theory]
+    [Trait(XunitConstants.Category, XunitConstants.SlowOnWindows)]
+    [InlineData(MongoEdition.Community, false)]
+    [InlineData(MongoEdition.Enterprise, false)]
+    [InlineData(MongoEdition.Community, true)]
+    [InlineData(MongoEdition.Enterprise, true)]
+    public async Task Mongo7Operations_ImportAndExport_SucceedsAcrossInstances(MongoEdition edition, bool replset)
+    {
+        await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V7, edition, replset);
+    }
+
+    [Theory]
+    [InlineData(MongoEdition.Community, false)]
+    [InlineData(MongoEdition.Enterprise, false)]
+    [InlineData(MongoEdition.Community, true)]
+    [InlineData(MongoEdition.Enterprise, true)]
+    public async Task Mongo8Operations_ImportAndExport_SucceedsAcrossInstances(MongoEdition edition, bool replset)
+    {
+        await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V8, edition, replset);
+    }
+
+    private async Task MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion version, MongoEdition edition, bool replset)
     {
         if (version is MongoVersion.V6 or MongoVersion.V7 && edition == MongoEdition.Enterprise && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {

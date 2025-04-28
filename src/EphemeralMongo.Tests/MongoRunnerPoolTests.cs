@@ -7,6 +7,7 @@ using MongoDB.Driver;
 
 namespace EphemeralMongo.Tests;
 
+[Trait(XunitConstants.Category, XunitConstants.SlowOnWindows)]
 public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
 {
     [Fact]
