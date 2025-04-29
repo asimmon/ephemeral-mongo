@@ -22,6 +22,8 @@ jobs:
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
+        with:
+          cache: true
 
       # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
       - if: matrix.os == 'ubuntu-24.04'
