@@ -44,10 +44,13 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
         if (options.BinaryDirectory != null)
         {
             var userProvidedExecutableFilePath = Path.Combine(options.BinaryDirectory, executableFileName);
+
             if (!File.Exists(userProvidedExecutableFilePath))
             {
                 throw new FileNotFoundException($"The provided binary directory '{options.BinaryDirectory}' does not contain the executable '{executableFileName}'.", userProvidedExecutableFilePath);
             }
+
+            return userProvidedExecutableFilePath;
         }
 
         if (processKind == MongoProcessKind.Mongod)
