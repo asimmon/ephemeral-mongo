@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <TargetFrameworks>net472;netstandard2.1;net8.0</TargetFrameworks>
     <AssemblyName>EphemeralMongo</AssemblyName>
     <RootNamespace>EphemeralMongo</RootNamespace>
     <PackageId>EphemeralMongo</PackageId>
@@ -33,7 +33,8 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+  <ItemGroup Condition="'$(TargetFramework)' != 'net8.0'">
     <PackageReference Include="System.Text.Json" />
+    <Using Include="System.Net.Http" />
   </ItemGroup>
 </Project>

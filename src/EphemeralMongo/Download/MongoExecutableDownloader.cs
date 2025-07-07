@@ -246,7 +246,7 @@ internal static class MongoExecutableDownloader
             try
             {
                 // An IO conflict happened in Windows CI where the file was edited by another process (multi-assembly testing)
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
                 File.Create(lastCheckFilePath).Dispose();
 #else
                 await File.Create(lastCheckFilePath).DisposeAsync().ConfigureAwait(false);
