@@ -4,7 +4,7 @@ namespace EphemeralMongo.Download;
 
 internal static class FileHashHelper
 {
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
     public static Task EnsureFileSha256HashAsync(string filePath, string expectedHash, CancellationToken cancellationToken)
 #else
     public static async Task EnsureFileSha256HashAsync(string filePath, string expectedHash, CancellationToken cancellationToken)
@@ -15,7 +15,7 @@ internal static class FileHashHelper
         try
         {
             Stream fileStream;
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
             using (fileStream = File.OpenRead(filePath))
 #else
             await using ((fileStream = File.OpenRead(filePath)).ConfigureAwait(false))
@@ -41,7 +41,7 @@ internal static class FileHashHelper
             throw new EphemeralMongoException($"The hash of the downloaded file {filePath} does not match the expected hash. Expected: {expectedHash}, Actual: {hash}");
         }
 
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
         return Task.CompletedTask;
 #endif
     }

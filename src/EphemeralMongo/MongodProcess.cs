@@ -55,7 +55,7 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         void OnOutputDataReceivedForConnectionReadiness(object sender, DataReceivedEventArgs args)
         {
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETFRAMEWORK
             var isReadyToAcceptConnections = args.Data != null && args.Data.IndexOf(ConnectionReadySentence, StringComparison.OrdinalIgnoreCase) >= 0;
 #else
             var isReadyToAcceptConnections = args.Data != null && args.Data.Contains(ConnectionReadySentence, StringComparison.OrdinalIgnoreCase);
