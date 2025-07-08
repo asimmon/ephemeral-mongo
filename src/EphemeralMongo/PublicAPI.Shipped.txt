@@ -52,3 +52,4 @@ EphemeralMongo.MongoVersion.V7 = 7 -> EphemeralMongo.MongoVersion
 EphemeralMongo.MongoVersion.V8 = 8 -> EphemeralMongo.MongoVersion
 static EphemeralMongo.MongoRunner.Run(EphemeralMongo.MongoRunnerOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> EphemeralMongo.IMongoRunner!
 static EphemeralMongo.MongoRunner.RunAsync(EphemeralMongo.MongoRunnerOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!
+virtual EphemeralMongo.Logger.Invoke(string! text) -> void

@@ -1,7 +1,7 @@
 #nullable enable
-EphemeralMongo.MongoRunnerPool
-EphemeralMongo.MongoRunnerPool.Dispose() -> void
-EphemeralMongo.MongoRunnerPool.MongoRunnerPool(EphemeralMongo.MongoRunnerOptions! options, int maxRentalsPerRunner = 100) -> void
-EphemeralMongo.MongoRunnerPool.Rent(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> EphemeralMongo.IMongoRunner!
-EphemeralMongo.MongoRunnerPool.RentAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!
-EphemeralMongo.MongoRunnerPool.Return(EphemeralMongo.IMongoRunner! runner) -> void
+[EMEX0001]EphemeralMongo.MongoRunnerPool
+[EMEX0001]EphemeralMongo.MongoRunnerPool.Dispose() -> void
+[EMEX0001]EphemeralMongo.MongoRunnerPool.MongoRunnerPool(EphemeralMongo.MongoRunnerOptions! options, int maxRentalsPerRunner = 100) -> void
+[EMEX0001]EphemeralMongo.MongoRunnerPool.Rent(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> EphemeralMongo.IMongoRunner!
+[EMEX0001]EphemeralMongo.MongoRunnerPool.RentAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!
+[EMEX0001]EphemeralMongo.MongoRunnerPool.Return(EphemeralMongo.IMongoRunner! runner) -> void
