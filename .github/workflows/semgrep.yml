@@ -20,13 +20,13 @@ jobs:
 
     steps:
       - name: Checkout all commits and tags
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: ${{ github.event_name == 'pull_request' }}
         with:
           fetch-depth: 0
 
       - name: Checkout single commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: ${{ github.event_name != 'pull_request' }}
 
       - name: Pull request scan
