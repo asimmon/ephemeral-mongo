@@ -176,7 +176,7 @@ public sealed class MongoRunnerOptions
     {
         if (path == null)
         {
-            return new ArgumentNullException(nameof(path));
+            return null;
         }
 
         try
