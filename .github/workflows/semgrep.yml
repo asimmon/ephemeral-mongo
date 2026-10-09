@@ -20,13 +20,13 @@ jobs:
 
     steps:
       - name: Checkout all commits and tags
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         if: ${{ github.event_name == 'pull_request' }}
         with:
           fetch-depth: 0
 
       - name: Checkout single commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         if: ${{ github.event_name != 'pull_request' }}
 
       - name: Pull request scan
@@ -39,7 +39,7 @@ jobs:
 
       - name: Save report as pipeline artifact
         if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: report.sarif
           path: report.sarif
