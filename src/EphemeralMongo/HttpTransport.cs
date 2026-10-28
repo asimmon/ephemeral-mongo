@@ -4,6 +4,7 @@ using System.Text.Json;
 namespace EphemeralMongo;
 
 [SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "HttpClient is a singleton or managed by the caller")]
+[SuppressMessage("Maintainability", "CA1510", Justification = "ArgumentNullException.ThrowIfNull isn't worth it when multi-targeting")]
 public sealed class HttpTransport
 {
 #if NET8_0_OR_GREATER

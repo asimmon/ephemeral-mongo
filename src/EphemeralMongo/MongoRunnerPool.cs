@@ -4,6 +4,7 @@ namespace EphemeralMongo;
 
 [Experimental("EMEX0001")]
 [SuppressMessage("Maintainability", "CA1513", Justification = "ObjectDisposedException.ThrowIf isn't worth it when multi-targeting")]
+[SuppressMessage("Maintainability", "CA1510", Justification = "ArgumentNullException.ThrowIfNull isn't worth it when multi-targeting")]
 public sealed class MongoRunnerPool : IDisposable
 {
     private readonly Guid _id;

@@ -208,7 +208,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                 {
                     await admin.RunCommandAsync<BsonDocument>(command, cancellationToken: combinedCts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -216,14 +216,14 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 try
                 {
                     await isReplicaSetReadyTcs.Task.ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -231,14 +231,14 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 try
                 {
                     await isTransactionReadyTcs.Task.ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -246,7 +246,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 this.HandleUnexpectedProcessExit();

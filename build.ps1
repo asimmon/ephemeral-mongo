@@ -24,12 +24,11 @@ Process {
 
     Exec { & dotnet build -c Release }
 
-    # https://learn.microsoft.com/en-us/dotnet/core/testing/microsoft-testing-platform-integration-dotnet-test
-    # https://github.com/microsoft/testfx/issues/4396
+    # https://aka.ms/dotnet-test
     if ($IsWindows) {
-      Exec { & dotnet test -c Release --no-build --no-restore -p:TestingPlatformShowTestsFailure=true -p:TestingPlatformCaptureOutput=false -tl:false -- --filter-query "/[Category!=SlowOnWindows]" }
+      Exec { & dotnet test -c Release --no-build --no-progress --output Detailed --filter-query "/[Category!=SlowOnWindows]" }
     } else {
-      Exec { & dotnet test -c Release --no-build --no-restore -p:TestingPlatformShowTestsFailure=true -p:TestingPlatformCaptureOutput=false -tl:false }
+      Exec { & dotnet test -c Release --no-build --no-progress --output Detailed }
     }
 
     Exec { & dotnet pack -c Release --no-build --output "$outputDir" }

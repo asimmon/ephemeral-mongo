@@ -5,7 +5,7 @@
     <Owners>Anthony Simmon</Owners>
     <PackageProjectUrl>https://github.com/asimmon/ephemeral-mongo</PackageProjectUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <LangVersion>12</LangVersion>
+    <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

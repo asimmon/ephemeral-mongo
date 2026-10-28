@@ -362,7 +362,7 @@ internal static class MongoExecutableDownloader
         catch (IOException) when (File.Exists(destFilePath))
         {
             // Another process already copied the file, which is fine
-            // This mostly happens in tests where we run two assemblies side by side (net9.0 and net472 for instance)
+            // This mostly happens in tests where we run two assemblies side by side (net10.0 and net472 for instance)
         }
     }
 }
