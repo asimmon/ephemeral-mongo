@@ -30,6 +30,15 @@
       "enabled": false
     },
     {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["MongoDB.Driver"],
+      "matchFileNames": ["src/EphemeralMongo.LatestDriver.Tests/EphemeralMongo.LatestDriver.Tests.csproj"],
+      "groupName": "Latest MongoDB.Driver",
+      "description": "Smoke tests run the library with the latest 3.x driver to catch breaking changes in newer versions",
+      "allowedVersions": "/^3\\./",
+      "enabled": true
+    },
+    {
       "matchPackageNames": ["dotnet-sdk"],
       "groupName": "Dotnet SDK",
       "description": "Only update patch and minor for the dotnet SDK version within the global.json",
