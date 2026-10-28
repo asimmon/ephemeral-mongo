@@ -27,7 +27,7 @@ List of features and capabilities:
 
 - Multiple ephemeral and **isolated MongoDB databases** for running tests.
 - A quick way to set up a MongoDB database for a local development environment.
-- Access to **MongoDB 6**, **7**, and **8**.
+- Access to **MongoDB 6**, **7**, **8**, and **9**.
 - Access to **MongoDB Community** and **Enterprise editions**.
 - Support for **single-node replica sets**, enabling transactions and change streams.
 - _mongoexport_ and _mongoimport_ tools for [exporting](https://www.mongodb.com/docs/database-tools/mongoexport/) and [importing](https://docs.mongodb.com/database-tools/mongoimport/) collections.
@@ -53,7 +53,7 @@ Use `MongoRunner.RunAsync()` or `MongoRunner.Run()` methods to create a disposab
 var options = new MongoRunnerOptions
 {
     // The desired MongoDB version to download and use.
-    // Possible values are V6, V7 and V8. Default is V8.
+    // Possible values are V6, V7, V8 and V9. Default is V8.
     Version = MongoVersion.V8,
 
     // The desired MongoDB edition to download and use.
