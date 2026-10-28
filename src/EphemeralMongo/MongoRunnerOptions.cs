@@ -1,5 +1,9 @@
-﻿namespace EphemeralMongo;
+﻿using System.Diagnostics.CodeAnalysis;
 
+namespace EphemeralMongo;
+
+[SuppressMessage("Maintainability", "CA1510", Justification = "ArgumentNullException.ThrowIfNull isn't worth it when multi-targeting")]
+[SuppressMessage("Design", "MA0015", Justification = "Property names are more meaningful than 'value' for setter argument exceptions")]
 public sealed class MongoRunnerOptions
 {
     private MongoVersion _version = MongoVersion.V8;

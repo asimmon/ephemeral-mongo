@@ -84,7 +84,9 @@ internal static class NativeMethods
                     },
                 };
 
-                if (!PInvoke.SetInformationJobObject(jobHandle, JOBOBJECTINFOCLASS.JobObjectExtendedLimitInformation, &info, (uint)Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>()))
+                var infoBytes = new ReadOnlySpan<byte>(&info, Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>());
+
+                if (!PInvoke.SetInformationJobObject(jobHandle, JOBOBJECTINFOCLASS.JobObjectExtendedLimitInformation, infoBytes))
                 {
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
