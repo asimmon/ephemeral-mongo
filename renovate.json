@@ -1,9 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "platform": "github",
   "labels": ["renovate"],
   "extends": [
-    "config:base",
+    "config:recommended",
     ":rebaseStalePrs",
     "helpers:pinGitHubActionDigests"
   ],
@@ -11,7 +10,7 @@
     "github-actions",
     "nuget"
   ],
-  "stabilityDays": 3,
+  "minimumReleaseAge": "3 days",
   "prHourlyLimit": 0,
   "prConcurrentLimit": 0,
   "branchConcurrentLimit": 0,
@@ -27,13 +26,25 @@
       "matchPackageNames": ["MongoDB.Driver"],
       "groupName": "Ignored MongoDB.Driver",
       "description": "We only set a minimum required version, any vulnerabilities will still be reported",
+      "minimumReleaseAge": "7 days",
       "enabled": false
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["MongoDB.Driver"],
+      "matchFileNames": ["src/EphemeralMongo.LatestDriver.Tests/EphemeralMongo.LatestDriver.Tests.csproj"],
+      "groupName": "Latest MongoDB.Driver",
+      "description": "Smoke tests run the library with the latest 3.x driver to catch breaking changes in newer versions",
+      "allowedVersions": "/^3\\./",
+      "minimumReleaseAge": "7 days",
+      "enabled": true
     },
     {
       "matchPackageNames": ["dotnet-sdk"],
       "groupName": "Dotnet SDK",
       "description": "Only update patch and minor for the dotnet SDK version within the global.json",
-      "extends": [":disableMajorUpdates"]
+      "extends": [":disableMajorUpdates"],
+      "minimumReleaseAge": "7 days"
     },
     {
       "matchManagers": ["github-actions"],

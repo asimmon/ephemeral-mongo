@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">net472;net10.0</TargetFrameworks>
+    <TargetFramework Condition=" '$(OS)' != 'Windows_NT' ">net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA2007</NoWarn>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <RootNamespace>EphemeralMongo.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+
+    <Compile Include="..\EphemeralMongo.Tests\MongoTestOptions.cs" Link="MongoTestOptions.cs" />
+
+    <Content Include="..\EphemeralMongo.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The library is compiled against the minimum supported MongoDB.Driver version, this project runs it with the latest one like most consumers do -->
+    <!-- Renovate only updates MongoDB.Driver in this project, see renovate.json -->
+    <PackageReference Include="MongoDB.Driver" VersionOverride="3.13.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="System.Memory" Condition=" '$(TargetFramework)' == 'net472' " />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
+  </ItemGroup>
+</Project>
