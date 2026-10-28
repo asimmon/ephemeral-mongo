@@ -15,15 +15,6 @@ internal static class MongoExecutableDownloader
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
     private static readonly string MongoExportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoExportExeFileNameWithoutExt + ".exe" : MongoExportExeFileNameWithoutExt;
 
-    private static readonly string AppDataDirPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ephemeral-mongo");
-
-    // On Linux, /tmp is shared by all users, so another user could pre-create our temp directory and tamper with the archive
-    // or the extracted executables between the hash check and the copy. The per-user app data directory isn't writable by others.
-    // Windows and macOS temp directories are already per-user.
-    private static readonly string TmpDirPath = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
-        ? Path.Combine(AppDataDirPath, "tmp")
-        : Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
-
     // The epoch for file time is 1/1/1601 12:00:00 AM
     // This value is returned by File.GetLastWriteTimeUtc when the file does not exist
     private static readonly DateTime FileTimeEpochUtc = DateTime.FromFileTimeUtc(0);
@@ -38,7 +29,8 @@ internal static class MongoExecutableDownloader
         var target = DownloadTargetHelper.GetTarget(options.Version);
 
         var baseExeDirName = string.Format(CultureInfo.InvariantCulture, "{0}-{1}-{2}", MongodExeFileNameWithoutExt, edition, majorVersion);
-        var baseExeDirPath = Path.Combine(AppDataDirPath, "bin", MongodExeFileNameWithoutExt, baseExeDirName);
+        var baseExeDirPath = Path.Combine(AppDataDirectory.RootPath, "bin", MongodExeFileNameWithoutExt, baseExeDirName);
+        AppDataDirectory.EnsureRootExists();
         Directory.CreateDirectory(baseExeDirPath);
 
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
@@ -78,7 +70,8 @@ internal static class MongoExecutableDownloader
             var mongodDownload = mongodVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Edition == edition && x.Target == target)
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB architecture {architecture}, edition {edition}, and target {target}");
 
-            var exeDirPath = Path.Combine(baseExeDirPath, mongodVersion.Version);
+            var versionDirName = DownloadReleaseHelper.GetVersionDirectoryName(mongodVersion.Version);
+            var exeDirPath = Path.Combine(baseExeDirPath, versionDirName);
             var exeFilePath = Path.Combine(exeDirPath, MongodExeFileName);
 
             if (File.Exists(exeFilePath))
@@ -87,14 +80,14 @@ internal static class MongoExecutableDownloader
                 return exeFilePath;
             }
 
-            var tmpDirName = $"{MongodExeFileNameWithoutExt}-{edition}-{mongodVersion.Version}-{Path.GetRandomFileName()}";
-            var tmpDownloadDirPath = Path.Combine(TmpDirPath, "downloads", tmpDirName);
-            var tmpUncompressDirPath = Path.Combine(TmpDirPath, "uncompress", tmpDirName);
+            var tmpDirName = $"{MongodExeFileNameWithoutExt}-{edition}-{versionDirName}-{Path.GetRandomFileName()}";
+            var tmpDownloadDirPath = Path.Combine(AppDataDirectory.TmpPath, "downloads", tmpDirName);
+            var tmpUncompressDirPath = Path.Combine(AppDataDirectory.TmpPath, "uncompress", tmpDirName);
 
             Directory.CreateDirectory(tmpDownloadDirPath);
             Directory.CreateDirectory(tmpUncompressDirPath);
 
-            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, Path.GetFileName(mongodDownload.Archive.Url));
+            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, DownloadReleaseHelper.GetArchiveFileName(mongodDownload.Archive.Url));
 
             try
             {
@@ -148,7 +141,8 @@ internal static class MongoExecutableDownloader
     {
         const string baseExeDirName = "tools";
 
-        var baseExeDirPath = Path.Combine(AppDataDirPath, "bin", baseExeDirName);
+        var baseExeDirPath = Path.Combine(AppDataDirectory.RootPath, "bin", baseExeDirName);
+        AppDataDirectory.EnsureRootExists();
         Directory.CreateDirectory(baseExeDirPath);
 
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
@@ -191,7 +185,8 @@ internal static class MongoExecutableDownloader
             var mongoToolsDownload = mongoToolsVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Name == target)
                 ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version for architecture {architecture} and target {target}");
 
-            var exeDirPath = Path.Combine(baseExeDirPath, mongoToolsVersion.Version);
+            var versionDirName = DownloadReleaseHelper.GetVersionDirectoryName(mongoToolsVersion.Version);
+            var exeDirPath = Path.Combine(baseExeDirPath, versionDirName);
             var mongoImportExeFilePath = Path.Combine(exeDirPath, MongoImportExeFileName);
             var mongoExportExeFilePath = Path.Combine(exeDirPath, MongoExportExeFileName);
 
@@ -201,14 +196,14 @@ internal static class MongoExecutableDownloader
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
 
-            var tmpDirName = $"tools-{mongoToolsVersion.Version}-{Path.GetRandomFileName()}";
-            var tmpDownloadDirPath = Path.Combine(TmpDirPath, "downloads", tmpDirName);
-            var tmpUncompressDirPath = Path.Combine(TmpDirPath, "uncompress", tmpDirName);
+            var tmpDirName = $"tools-{versionDirName}-{Path.GetRandomFileName()}";
+            var tmpDownloadDirPath = Path.Combine(AppDataDirectory.TmpPath, "downloads", tmpDirName);
+            var tmpUncompressDirPath = Path.Combine(AppDataDirectory.TmpPath, "uncompress", tmpDirName);
 
             Directory.CreateDirectory(tmpDownloadDirPath);
             Directory.CreateDirectory(tmpUncompressDirPath);
 
-            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, Path.GetFileName(mongoToolsDownload.Archive.Url));
+            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, DownloadReleaseHelper.GetArchiveFileName(mongoToolsDownload.Archive.Url));
 
             try
             {
