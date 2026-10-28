@@ -158,9 +158,9 @@ Process {
     return $fixedVersion
   }
 
-  function Format-FixedVersion([string]$PackageId, [string]$CurrentVersion, [string]$FixedVersion) {
+  function Format-FixedVersion([string]$CurrentVersion, [string]$FixedVersion) {
     $isNewMajor = (ConvertTo-NuGetVersion $FixedVersion).Major -ne (ConvertTo-NuGetVersion $CurrentVersion).Major
-    return "``$PackageId`` $FixedVersion" + ($isNewMajor ? " (new major version)" : "")
+    return $FixedVersion + ($isNewMajor ? " (new major version)" : "")
   }
 
   # Direct dependencies of the project whose dependency graph contains the given transitive package
@@ -221,7 +221,7 @@ Process {
   $accepted = @()
 
   foreach ($projectFile in Get-ChildItem (Join-Path $PSScriptRoot "src") -Filter "*.csproj" -Recurse) {
-    $evaluation = Exec { & dotnet msbuild $projectFile.FullName -getProperty:IsPackable -getProperty:TargetFrameworks -getProperty:ProjectAssetsFile -getItem:NuGetAuditSuppress } | ConvertFrom-Json
+    $evaluation = Exec { & dotnet msbuild $projectFile.FullName -getProperty:IsPackable -getProperty:TargetFrameworks -getItem:NuGetAuditSuppress } | ConvertFrom-Json
     if ($evaluation.Properties.IsPackable -ne "true") {
       continue
     }
@@ -232,7 +232,10 @@ Process {
 
     Write-Host "Scanning $projectName"
     Exec { & dotnet restore $projectFile.FullName } | Out-Null
-    $assets = Get-Content $evaluation.Properties.ProjectAssetsFile -Raw | ConvertFrom-Json -AsHashtable
+
+    # The assets file path is only defined once restore has generated the project's nuget.g.props
+    $assetsFile = (Exec { & dotnet msbuild $projectFile.FullName -getProperty:ProjectAssetsFile } | Out-String).Trim()
+    $assets = Get-Content $assetsFile -Raw | ConvertFrom-Json -AsHashtable
 
     # The same vulnerable package is usually reported for every target framework, it's only reported once
     $projectFindings = [ordered]@{}
@@ -272,10 +275,12 @@ Process {
       $suggestions = @()
 
       if ($finding.IsTransitive) {
+        $hasAncestorFix = $false
         foreach ($ancestor in Get-TopLevelAncestors $assets $finding.TargetFrameworks[0] $finding.PackageId) {
           $fixedVersion = Find-MinimumFixedVersion $ancestor.Id $ancestor.Version $ancestor.Range $finding.AdvisoryUrl $targetFrameworks
           if ($fixedVersion) {
-            $suggestions += "Raise the minimum version of ``$($ancestor.Id)`` $($ancestor.Version) to $(Format-FixedVersion $ancestor.Id $ancestor.Version $fixedVersion)"
+            $hasAncestorFix = $true
+            $suggestions +="Raise the minimum version of ``$($ancestor.Id)`` from $($ancestor.Version) to $(Format-FixedVersion $ancestor.Version $fixedVersion)"
           }
           else {
             $suggestions += "No version of ``$($ancestor.Id)`` allowed by ``$($ancestor.Range)`` fixes it"
@@ -284,7 +289,7 @@ Process {
 
         $fixedVersion = Find-MinimumFixedVersion $finding.PackageId $finding.Version $null $finding.AdvisoryUrl $targetFrameworks
         if ($fixedVersion) {
-          $suggestions += "Or reference $(Format-FixedVersion $finding.PackageId $finding.Version $fixedVersion) directly"
+          $suggestions += "$($hasAncestorFix ? "Or reference" : "Reference") ``$($finding.PackageId)`` $(Format-FixedVersion $finding.Version $fixedVersion) directly"
         }
         else {
           $suggestions += "No newer version of ``$($finding.PackageId)`` fixes it"
@@ -293,7 +298,7 @@ Process {
       else {
         $fixedVersion = Find-MinimumFixedVersion $finding.PackageId $finding.Version $finding.RequestedRange $finding.AdvisoryUrl $targetFrameworks
         if ($fixedVersion) {
-          $suggestions += "Raise the minimum version to $(Format-FixedVersion $finding.PackageId $finding.Version $fixedVersion)"
+          $suggestions += "Raise the minimum version from $($finding.Version) to $(Format-FixedVersion $finding.Version $fixedVersion)"
         }
         else {
           $suggestions += "No version allowed by ``$($finding.RequestedRange)`` fixes it"
