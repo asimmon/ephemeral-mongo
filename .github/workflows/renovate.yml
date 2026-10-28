@@ -15,15 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Use Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-
+      # Renovate runs from its Docker image, which bundles its locked dependencies, instead of installing the latest npm package and its dependency tree.
+      # The image is pinned to an exact version and digest, which Renovate's github-actions manager keeps up to date like any other dependency.
       - name: Renovate
-        shell: bash
-        run: npx renovate $GITHUB_REPOSITORY
+        uses: renovatebot/github-action@2804199d260ad00c1fae0e9e842888369391c776 # v46.3.10
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_TOKEN }}
+          renovate-image: ghcr.io/renovatebot/renovate:44.190.1@sha256:a0d1de588a9bda2e63a8b5b2a7d83eb893ef23aa6d5cb7748c075ff5544d0829
         env:
-          RENOVATE_CONFIG_FILE: "renovate.json"
-          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
           LOG_LEVEL: "debug"

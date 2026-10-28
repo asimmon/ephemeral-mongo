@@ -166,6 +166,7 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
             StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
             ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+            ReplicaSetSetupTimeout = MongoTestOptions.ReplicaSetSetupTimeout,
             AdditionalArguments = edition == MongoEdition.Enterprise
                 ? MongoTestOptions.EnterpriseInMemoryArguments
                 : MongoTestOptions.CommunityArguments,
