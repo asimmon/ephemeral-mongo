@@ -60,22 +60,38 @@ internal abstract class BaseMongoProcess : IMongoProcess
         this.Process.OutputDataReceived -= this.OnOutputDataReceivedForLogging;
         this.Process.ErrorDataReceived -= this.OnErrorDataReceivedForLogging;
 
-        this.Process.CancelOutputRead();
-        this.Process.CancelErrorRead();
-
-        if (!this.Process.HasExited)
+        // Dispose can run while an exception thrown by StartAsync is unwinding (e.g. Process.Start failed because the executable is missing),
+        // so none of the cleanup steps below may throw, otherwise the original exception would be replaced and Process.Dispose skipped
+        try
         {
-            try
+            TryCancelAsyncRead(this.Process.CancelOutputRead);
+            TryCancelAsyncRead(this.Process.CancelErrorRead);
+
+            if (!this.Process.HasExited)
             {
                 this.Process.Kill();
                 this.Process.WaitForExit();
             }
-            catch
-            {
-                // ignored, we did our best to stop the process
-            }
         }
+        catch
+        {
+            // Ignored, we did our best to stop the process (HasExited throws if the process was never started)
+        }
+        finally
+        {
+            this.Process.Dispose();
+        }
+    }
 
-        this.Process.Dispose();
+    private static void TryCancelAsyncRead(Action cancelAsyncRead)
+    {
+        try
+        {
+            cancelAsyncRead();
+        }
+        catch (InvalidOperationException)
+        {
+            // The process was never started or the asynchronous read was never started
+        }
     }
 }
