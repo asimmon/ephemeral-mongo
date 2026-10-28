@@ -53,7 +53,8 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 StandardOutputLogger = this.MongoMessageLogger,
                 StandardErrorLogger = this.MongoMessageLogger,
                 RootDataDirectoryPath = rootDataDirectoryPath,
-                AdditionalArguments = ["--quiet"],
+                ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+                AdditionalArguments = MongoTestOptions.CommunityArguments,
             };
 
             testOutputHelper.WriteLine("Root data directory path: {0}", options.RootDataDirectoryPath);
@@ -154,9 +155,10 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
             UseSingleNodeReplicaSet = replset,
             StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
+            ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
             AdditionalArguments = edition == MongoEdition.Enterprise
-                ? ["--quiet", "--storageEngine", "inMemory"]
-                : ["--quiet"],
+                ? MongoTestOptions.EnterpriseInMemoryArguments
+                : MongoTestOptions.CommunityArguments,
         };
 
         using (var runner = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))

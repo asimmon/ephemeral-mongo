@@ -26,6 +26,7 @@
     <PackageReference Include="System.Memory" Condition=" '$(TargetFramework)' == 'net472' " />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
   </ItemGroup>
 
   <ItemGroup>

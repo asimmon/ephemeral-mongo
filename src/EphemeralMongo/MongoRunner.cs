@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -10,6 +10,10 @@ namespace EphemeralMongo;
 public sealed class MongoRunner
 {
     private static readonly string DefaultRootDataDirectory = Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "data");
+
+    // https://github.com/mongodb/mongo/blob/master/src/mongo/util/exit_code.h (kNetworkError), e.g. when the port is already in use
+    private const uint MongodNetworkErrorExitCode = 48;
+    private const int MaxRandomPortAttempts = 3;
 
     private readonly IFileSystem _fileSystem;
     private readonly ITimeProvider _timeProvider;
@@ -77,41 +81,31 @@ public sealed class MongoRunner
 
             this.CleanupOldDataDirectories();
 
-            this._options.MongoPort ??= this._portFactory.GetRandomAvailablePort();
+            // A random port is free when picked, but another process can take it before mongod binds to it,
+            // which is likely when many instances start in parallel, such as in test suites
+            var isRandomPort = this._options.MongoPort == null;
 
-            // Build mongod executable arguments
-            List<string> arguments =
-            [
-                "--dbpath", this._dataDirectory,
-                "--port", this._options.MongoPort.Value.ToString(CultureInfo.InvariantCulture),
-                "--bind_ip", "127.0.0.1"
-            ];
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            for (var attempt = 1; ; attempt++)
             {
-                arguments.Add("--tlsMode");
-                arguments.Add("disabled");
-            }
-
-            if (this._options.UseSingleNodeReplicaSet)
-            {
-                arguments.Add("--replSet");
-                arguments.Add(this._options.ReplicaSetName);
-            }
-
-            if (this._options.AdditionalArguments != null)
-            {
-                foreach (var additionalArgument in this._options.AdditionalArguments)
+                if (isRandomPort)
                 {
-                    if (!string.IsNullOrWhiteSpace(additionalArgument))
-                    {
-                        arguments.Add(additionalArgument);
-                    }
+                    this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
+                }
+
+                this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, this.BuildMongodArguments());
+
+                try
+                {
+                    await this._process.StartAsync(cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+                catch (EphemeralMongoException ex) when (isRandomPort && attempt < MaxRandomPortAttempts && ex.ProcessExitCode == MongodNetworkErrorExitCode)
+                {
+                    this._options.StandardErrorLogger?.Invoke($"MongoDB could not listen on port {this._options.MongoPort}, retrying with another port.");
+                    this._process.Dispose();
+                    this._process = null;
                 }
             }
-
-            this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, [.. arguments]);
-            await this._process.StartAsync(cancellationToken).ConfigureAwait(false);
 
             var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?directConnection=true&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
             var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
@@ -123,6 +117,41 @@ public sealed class MongoRunner
             this.Dispose(throwOnException: false);
             throw;
         }
+    }
+
+    private string[] BuildMongodArguments()
+    {
+        List<string> arguments =
+        [
+            "--dbpath", this._dataDirectory!,
+            "--port", this._options.MongoPort!.Value.ToString(CultureInfo.InvariantCulture),
+            "--bind_ip", "127.0.0.1"
+        ];
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            arguments.Add("--tlsMode");
+            arguments.Add("disabled");
+        }
+
+        if (this._options.UseSingleNodeReplicaSet)
+        {
+            arguments.Add("--replSet");
+            arguments.Add(this._options.ReplicaSetName);
+        }
+
+        if (this._options.AdditionalArguments != null)
+        {
+            foreach (var additionalArgument in this._options.AdditionalArguments)
+            {
+                if (!string.IsNullOrWhiteSpace(additionalArgument))
+                {
+                    arguments.Add(additionalArgument);
+                }
+            }
+        }
+
+        return [.. arguments];
     }
 
     private static int _ongoingRootDataDirectoryCleanupCount;
