@@ -24,13 +24,13 @@ jobs:
 
     steps:
       - name: Checkout all commits and tags
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event_name == 'pull_request' }}
         with:
           fetch-depth: 0
 
       - name: Checkout single commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event_name != 'pull_request' }}
 
       - name: Pull request scan
@@ -43,14 +43,14 @@ jobs:
 
       - name: Save report as pipeline artifact
         if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: report.sarif
           path: report.sarif
 
       - name: Publish code scanning alerts
         if: ${{ github.event_name != 'pull_request' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: report.sarif
           category: semgrep

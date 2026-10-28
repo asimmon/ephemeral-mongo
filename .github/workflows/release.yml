@@ -19,7 +19,7 @@ jobs:
     # Includes waiting for CI to complete if the tag was pushed right after the commit
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -47,7 +47,7 @@ jobs:
 
           gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
 
       - run: ./build.ps1 -SkipTests
         shell: pwsh
