@@ -27,7 +27,7 @@ internal static class DownloadReleaseHelper
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !IsMongoDbHost(uri.Host))
         {
-            throw new EphemeralMongoException($"The MongoDB archive URL '{url}' is not an HTTPS URL from mongodb.org");
+            throw new EphemeralMongoException($"The MongoDB archive URL '{url}' is not an HTTPS URL from mongodb.org or mongodb.com");
         }
 
         // Path.GetFileName isn't used as its separators depend on the operating system.
@@ -41,8 +41,14 @@ internal static class DownloadReleaseHelper
         return fileName;
     }
 
+    // Community archives are served from fastdl.mongodb.org, enterprise ones from downloads.mongodb.com
     private static bool IsMongoDbHost(string host)
     {
-        return host.Equals("mongodb.org", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".mongodb.org", StringComparison.OrdinalIgnoreCase);
+        return IsDomainOrSubdomain(host, "mongodb.org") || IsDomainOrSubdomain(host, "mongodb.com");
+    }
+
+    private static bool IsDomainOrSubdomain(string host, string domain)
+    {
+        return host.Equals(domain, StringComparison.OrdinalIgnoreCase) || host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase);
     }
 }
