@@ -19,7 +19,6 @@ Process {
 
   $workingDir = Join-Path $PSScriptRoot "src"
   $outputDir = Join-Path $PSScriptRoot ".output"
-  $nupkgsPath = Join-Path $outputDir "*.nupkg"
   $testResultsDir = Join-Path $outputDir "TestResults"
 
   try {
@@ -42,11 +41,8 @@ Process {
       }
     }
 
+    # Packages are pushed by dedicated CI jobs, so that API keys are never exposed to the build and its dependencies
     Exec { & dotnet pack -c Release --no-build --output "$outputDir" }
-
-    if (($null -ne $env:NUGET_SOURCE ) -and ($null -ne $env:NUGET_API_KEY)) {
-      Exec { & dotnet nuget push "$nupkgsPath" -s $env:NUGET_SOURCE -k $env:NUGET_API_KEY --skip-duplicate }
-    }
   }
   finally {
     Pop-Location

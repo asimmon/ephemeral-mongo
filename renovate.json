@@ -4,7 +4,8 @@
   "labels": ["renovate"],
   "extends": [
     "config:base",
-    ":rebaseStalePrs"
+    ":rebaseStalePrs",
+    "helpers:pinGitHubActionDigests"
   ],
   "enabledManagers": [
     "github-actions",
