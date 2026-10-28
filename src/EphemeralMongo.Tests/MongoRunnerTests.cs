@@ -134,6 +134,16 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
         await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V8, edition, replset);
     }
 
+    [Theory]
+    [InlineData(MongoEdition.Community, false)]
+    [InlineData(MongoEdition.Enterprise, false)]
+    [InlineData(MongoEdition.Community, true)]
+    [InlineData(MongoEdition.Enterprise, true)]
+    public async Task Mongo9Operations_ImportAndExport_SucceedsAcrossInstances(MongoEdition edition, bool replset)
+    {
+        await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V9, edition, replset);
+    }
+
     private async Task MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion version, MongoEdition edition, bool replset)
     {
         if (version is MongoVersion.V6 or MongoVersion.V7 && edition == MongoEdition.Enterprise && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

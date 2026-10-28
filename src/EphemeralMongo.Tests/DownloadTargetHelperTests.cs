@@ -80,6 +80,7 @@ public sealed class DownloadTargetHelperTests : IDisposable
     [InlineData("ubuntu", "24.04", "ubuntu2204", MongoVersion.V6)]
     [InlineData("ubuntu", "24.04", "ubuntu2204", MongoVersion.V7)]
     [InlineData("ubuntu", "24.04", "ubuntu2404", MongoVersion.V8)]
+    [InlineData("ubuntu", "24.04", "ubuntu2404", MongoVersion.V9)]
     public void GetTarget_AdjustsLinuxTarget_ForOlderMongoVersions(string actualId, string actualVersionId, string expectedTarget, MongoVersion version)
     {
         this.CreateOsReleaseFile(actualId, actualVersionId);
