@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Text;
 
 namespace EphemeralMongo.Download;
 
@@ -46,56 +47,92 @@ internal static class FileCompressionHelper
             CreateNoWindow = true
         };
 
-        if (Process.Start(processStartInfo) is not { } process)
-        {
-            throw new EphemeralMongoException($"Failed to start the tar process to extract {archiveFilePath} to {destinationDirectory}");
-        }
+        var output = new StringBuilder();
 
-        try
+        void OnDataReceived(object sender, DataReceivedEventArgs args)
         {
-            using (process)
+            if (args.Data != null)
             {
-                process.EnableRaisingEvents = true;
-
-                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-                void OnProcessExited(object? sender, EventArgs args)
+                // Standard output and error events are raised on different threads
+                lock (output)
                 {
-                    var exitCode = process.ExitCode;
-                    if (exitCode == 0)
-                    {
-                        tcs.SetResult(true);
-                    }
-                    else
-                    {
-                        tcs.SetException(new InvalidOperationException($"The tar process exited with code {exitCode}"));
-                    }
-                }
-
-                process.Exited += OnProcessExited;
-
-                try
-                {
-                    using (cancellationToken.Register(() => tcs.TrySetCanceled(cancellationToken)))
-                    {
-                        await tcs.Task.ConfigureAwait(false);
-                    }
-                }
-                finally
-                {
-                    process.Exited -= OnProcessExited;
-                    process.Kill();
-#if NET8_0_OR_GREATER
-                    await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-#else
-                    process.WaitForExit();
-#endif
+                    output.AppendLine(args.Data);
                 }
             }
         }
-        catch (Exception ex)
+
+        var processExitedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Subscribing to the exit event before starting the process ensures that we can't miss it if tar exits immediately
+        using var process = new Process
         {
+            StartInfo = processStartInfo,
+            EnableRaisingEvents = true,
+        };
+
+        process.OutputDataReceived += OnDataReceived;
+        process.ErrorDataReceived += OnDataReceived;
+        process.Exited += (_, _) => processExitedTcs.TrySetResult(true);
+
+        try
+        {
+            process.Start();
+
+            // Both streams must be drained, otherwise tar blocks once the pipe buffer is full
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            try
+            {
+                using (cancellationToken.Register(() => processExitedTcs.TrySetCanceled(cancellationToken)))
+                {
+                    await processExitedTcs.Task.ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                KillQuietly(process);
+                throw;
+            }
+
+            // Ensures that all redirected output has been received
+#if NET8_0_OR_GREATER
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+#else
+            process.WaitForExit();
+#endif
+
+            if (process.ExitCode != 0)
+            {
+                string outputMessage;
+                lock (output)
+                {
+                    outputMessage = output.Length == 0 ? string.Empty : $" Output: {output}";
+                }
+
+                throw new InvalidOperationException($"The tar process exited with code {process.ExitCode}.{outputMessage}");
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            KillQuietly(process);
             throw new EphemeralMongoException($"Failed to extract tar.gz file {archiveFilePath} to {destinationDirectory}", ex);
+        }
+    }
+
+    private static void KillQuietly(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill();
+                process.WaitForExit();
+            }
+        }
+        catch
+        {
+            // Ignored, the process either never started or already exited
         }
     }
 }

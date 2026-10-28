@@ -13,7 +13,7 @@ public sealed class MongoRunnerOptions
     private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(30);
     private TimeSpan _replicaSetSetupTimeout = TimeSpan.FromSeconds(10);
     private int? _mongoPort;
-    private TimeSpan _dataDirectoryLifetime = TimeSpan.FromHours(12);
+    private TimeSpan? _dataDirectoryLifetime = TimeSpan.FromHours(12);
     private HttpTransport _httpTransport = new HttpTransport();
     private TimeSpan _newVersionCheckTimeout = TimeSpan.FromDays(1);
 
@@ -75,7 +75,7 @@ public sealed class MongoRunnerOptions
     public string? DataDirectory
     {
         get => this._dataDirectory;
-        set => this._dataDirectory = CheckDirectoryPathFormat(value) is { } ex ? throw new ArgumentException(nameof(this.DataDirectory), ex) : value;
+        set => this._dataDirectory = CheckDirectoryPathFormat(value) is { } ex ? throw new ArgumentException("The data directory path is invalid.", nameof(this.DataDirectory), ex) : value;
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public sealed class MongoRunnerOptions
     public string? BinaryDirectory
     {
         get => this._binaryDirectory;
-        set => this._binaryDirectory = CheckDirectoryPathFormat(value) is { } ex ? throw new ArgumentException(nameof(this.BinaryDirectory), ex) : value;
+        set => this._binaryDirectory = CheckDirectoryPathFormat(value) is { } ex ? throw new ArgumentException("The binary directory path is invalid.", nameof(this.BinaryDirectory), ex) : value;
     }
 
     /// <summary>
@@ -142,12 +142,13 @@ public sealed class MongoRunnerOptions
     /// <summary>
     /// The lifetime of data directories that are automatically created when they are not specified by the user.
     /// When their age exceeds this value, they will be deleted on the next run of MongoRunner.
+    /// Set to <c>null</c> to disable the automatic deletion of old data directories.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The lifetime cannot be negative.</exception>
     public TimeSpan? DataDirectoryLifetime
     {
         get => this._dataDirectoryLifetime;
-        set => this._dataDirectoryLifetime = value is not null && value >= TimeSpan.Zero ? value.Value : throw new ArgumentOutOfRangeException(nameof(this.DataDirectoryLifetime));
+        set => this._dataDirectoryLifetime = value == null || value >= TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(nameof(this.DataDirectoryLifetime));
     }
 
     /// <summary>
@@ -180,7 +181,8 @@ public sealed class MongoRunnerOptions
     {
         if (path == null)
         {
-            return new ArgumentNullException(nameof(path));
+            // Null means "use the default behavior"
+            return null;
         }
 
         try

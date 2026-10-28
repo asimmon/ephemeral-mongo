@@ -66,7 +66,7 @@ internal static class MongoExecutableDownloader
 
             var mongodVersions = await options.Transport.GetFromJsonAsync<MongoVersionsDto>("https://downloads.mongodb.org/current.json", cancellationToken).ConfigureAwait(false);
 
-            var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
+            var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture) + ".", StringComparison.Ordinal))
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB major version {majorVersion}");
 
             var mongodDownload = mongodVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Edition == edition && x.Target == target)
@@ -373,14 +373,30 @@ internal static class MongoExecutableDownloader
             return;
         }
 
+        // Copy to a unique temporary file first, then rename it, so other processes never see a partially copied file at the destination path.
+        // The temporary file is in the same directory so that the rename is atomic.
+        var tmpDestFilePath = destFilePath + "." + Path.GetRandomFileName() + ".tmp";
+
         try
         {
-            File.Copy(sourceFilePath, destFilePath, overwrite: false);
+            File.Copy(sourceFilePath, tmpDestFilePath, overwrite: false);
+            File.Move(tmpDestFilePath, destFilePath);
         }
         catch (IOException) when (File.Exists(destFilePath))
         {
             // Another process already copied the file, which is fine
             // This mostly happens in tests where we run two assemblies side by side (net10.0 and net472 for instance)
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tmpDestFilePath);
+            }
+            catch (IOException)
+            {
+                // We did our best. This leftover file is harmless.
+            }
         }
     }
 }
