@@ -9,7 +9,11 @@ namespace EphemeralMongo;
 
 public sealed class MongoRunner
 {
-    private static readonly string DefaultRootDataDirectory = Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "data");
+    // On Linux, /tmp is shared by all users, so another user could pre-create our directory and tamper with the data files
+    // or prevent us from creating them. Windows and macOS temp directories are already per-user.
+    private static readonly string DefaultRootDataDirectory = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ephemeral-mongo", "data")
+        : Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "data");
 
     // https://github.com/mongodb/mongo/blob/master/src/mongo/util/exit_code.h (kNetworkError), e.g. when the port is already in use
     private const uint MongodNetworkErrorExitCode = 48;
