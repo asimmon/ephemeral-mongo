@@ -342,6 +342,8 @@ Process {
     }
   }
 
+  # A bare file name like the one CI passes has no parent directory until it's resolved against the current location
+  $OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
   New-Item -ItemType Directory -Force (Split-Path $OutputPath) | Out-Null
   Set-Content $OutputPath $report.ToString()
   Write-Host $report.ToString()
