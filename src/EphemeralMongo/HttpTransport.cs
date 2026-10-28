@@ -16,6 +16,10 @@ public sealed class HttpTransport
     private static readonly HttpClient SharedDefaultHttpClient = new HttpClient();
 #endif
 
+    private const int MaxAttempts = 3;
+    private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ReadInactivityTimeout = TimeSpan.FromSeconds(60);
+
     private readonly HttpClient _httpClient;
 
     public HttpTransport(HttpClient httpClient)
@@ -42,24 +46,7 @@ public sealed class HttpTransport
     {
         try
         {
-            using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-#if NET8_0_OR_GREATER
-            Stream sourceStream;
-            Stream destinationStream;
-            await using ((sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
-            await using ((destinationStream = File.Create(filePath)).ConfigureAwait(false))
-            {
-                await sourceStream.CopyToAsync(destinationStream, cancellationToken).ConfigureAwait(false);
-            }
-#else
-            using var sourceStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var destinationStream = File.Create(filePath);
-
-            const int defaultBufferSize = 81920;
-            await sourceStream.CopyToAsync(destinationStream, defaultBufferSize, cancellationToken).ConfigureAwait(false);
-#endif
+            await ExecuteWithRetryAsync(ct => this.DownloadFileOnceAsync(url, filePath, ct), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -67,25 +54,67 @@ public sealed class HttpTransport
         }
     }
 
+    private async Task DownloadFileOnceAsync(string url, string filePath, CancellationToken cancellationToken)
+    {
+        using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        EnsureSuccessStatusCode(response);
+
+        // HttpClient.Timeout doesn't apply to reading the response body, so a stalled download would otherwise hang forever
+        using var inactivityCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        // Disposing the response aborts pending reads on runtimes where stream reads ignore cancellation tokens (.NET Framework)
+        using var inactivityRegistration = inactivityCts.Token.Register(response.Dispose);
+
+        const int bufferSize = 81920;
+        var buffer = new byte[bufferSize];
+
+#if NET8_0_OR_GREATER
+        Stream sourceStream;
+        Stream destinationStream;
+        await using ((sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
+        await using ((destinationStream = File.Create(filePath)).ConfigureAwait(false))
+        {
+            int bytesRead;
+            inactivityCts.CancelAfter(ReadInactivityTimeout);
+            while ((bytesRead = await sourceStream.ReadAsync(buffer.AsMemory(0, bufferSize), inactivityCts.Token).ConfigureAwait(false)) > 0)
+            {
+                await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                inactivityCts.CancelAfter(ReadInactivityTimeout);
+            }
+        }
+#else
+        using var sourceStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        using var destinationStream = File.Create(filePath);
+
+        int bytesRead;
+        inactivityCts.CancelAfter(ReadInactivityTimeout);
+#if NETSTANDARD2_1_OR_GREATER
+        while ((bytesRead = await sourceStream.ReadAsync(buffer.AsMemory(0, bufferSize), inactivityCts.Token).ConfigureAwait(false)) > 0)
+        {
+            await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+            inactivityCts.CancelAfter(ReadInactivityTimeout);
+        }
+#else
+        while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, bufferSize, inactivityCts.Token).ConfigureAwait(false)) > 0)
+        {
+            await destinationStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
+            inactivityCts.CancelAfter(ReadInactivityTimeout);
+        }
+#endif
+#endif
+    }
+
     internal async Task<TValue> GetFromJsonAsync<TValue>(string url, CancellationToken cancellationToken)
     {
-        TValue? value;
+        TValue? value = default;
         try
         {
-            using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            Stream stream;
-#if NET8_0_OR_GREATER
-            await using ((stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
-#elif NETSTANDARD2_1_OR_GREATER
-            await using ((stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false))
-#else
-            using (stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-#endif
-            {
-                value = await JsonSerializer.DeserializeAsync<TValue>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
+            await ExecuteWithRetryAsync(
+                async ct =>
+                {
+                    value = await this.GetFromJsonOnceAsync<TValue>(url, ct).ConfigureAwait(false);
+                },
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -93,5 +122,73 @@ public sealed class HttpTransport
         }
 
         return value ?? throw new EphemeralMongoException($"An error occurred while parsing {url} as a JSON response");
+    }
+
+    private async Task<TValue?> GetFromJsonOnceAsync<TValue>(string url, CancellationToken cancellationToken)
+    {
+        // Release information documents are small, so the whole request must complete within the inactivity timeout
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(ReadInactivityTimeout);
+
+        using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
+        EnsureSuccessStatusCode(response);
+
+        using var timeoutRegistration = timeoutCts.Token.Register(response.Dispose);
+
+        Stream stream;
+#if NET8_0_OR_GREATER
+        await using ((stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false)).ConfigureAwait(false))
+#elif NETSTANDARD2_1_OR_GREATER
+        await using ((stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false))
+#else
+        using (stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+#endif
+        {
+            return await JsonSerializer.DeserializeAsync<TValue>(stream, cancellationToken: timeoutCts.Token).ConfigureAwait(false);
+        }
+    }
+
+    private static void EnsureSuccessStatusCode(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var statusCode = (int)response.StatusCode;
+        var isTransient = statusCode is 408 or 429 || statusCode >= 500;
+
+        if (isTransient)
+        {
+            // Throws an HttpRequestException, which is retried
+            response.EnsureSuccessStatusCode();
+        }
+
+        throw new EphemeralMongoException($"The request failed with status code {statusCode} ({response.ReasonPhrase})");
+    }
+
+    private static async Task ExecuteWithRetryAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await action(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception ex) when (attempt < MaxAttempts && IsTransient(ex, cancellationToken))
+            {
+                // 1s, 2s, 4s...
+                var delay = TimeSpan.FromTicks(InitialRetryDelay.Ticks << (attempt - 1));
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    // Network errors, interrupted streams, timeouts and transient HTTP status codes are retried.
+    // Non-transient HTTP status codes, unexpected JSON documents and caller cancellations are not.
+    private static bool IsTransient(Exception ex, CancellationToken cancellationToken)
+    {
+        return !cancellationToken.IsCancellationRequested && ex is not EphemeralMongoException and not JsonException;
     }
 }

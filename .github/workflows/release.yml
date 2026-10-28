@@ -6,22 +6,50 @@ on:
 
 permissions:
   contents: read
+  # Required to look up the CI run of the tagged commit
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-24.04
+    # Includes waiting for CI to complete if the tag was pushed right after the commit
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
+      # Tests already ran on every OS in the CI workflow for this exact commit. Releasing doesn't run them again,
+      # so a flaky test or an unavailable MongoDB download server can't block a release that CI already validated.
+      - name: Wait for CI to succeed on the tagged commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=""
+          for attempt in $(seq 1 20); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            echo "No CI run found yet for $GITHUB_SHA, waiting..."
+            sleep 15
+          done
+
+          if [ -z "$run_id" ]; then
+            echo "::error::No CI run found for $GITHUB_SHA. Run the CI workflow manually on this tag, then re-run this release."
+            exit 1
+          fi
+
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+
       - uses: actions/setup-dotnet@v4
 
-      # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
-      - run: |
-          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap2 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
-
-      - run: ./build.ps1
+      - run: ./build.ps1 -SkipTests
         shell: pwsh
         env:
           NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}

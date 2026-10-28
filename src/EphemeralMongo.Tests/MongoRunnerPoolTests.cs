@@ -336,7 +336,11 @@ public class MongoRunnerPoolTests(ITestContextAccessor testContextAccessor)
         }
     }
 
-    private static MongoRunnerOptions CreateDefaultOptions() => new();
+    private static MongoRunnerOptions CreateDefaultOptions() => new()
+    {
+        ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+        AdditionalArguments = MongoTestOptions.CommunityArguments,
+    };
 
     private static IMongoDatabase GetAdminDatabase(string connectionString)
     {

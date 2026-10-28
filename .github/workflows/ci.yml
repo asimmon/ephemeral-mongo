@@ -12,9 +12,16 @@ on:
 permissions:
   contents: read
 
+# Superseded pull request runs are cancelled to free up runners, but every commit pushed to main is tested because releases depend on it
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
+    # A full run takes less than 10 minutes, anything longer is stuck (hang dumps are generated after 15 minutes of test inactivity)
+    timeout-minutes: 30
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04, macos-15, windows-2025]
@@ -26,15 +33,46 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ matrix.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', 'src/**/*.csproj') }}
+
+      # MongoDB binaries are downloaded by the library into the local application data directory.
+      # Caching them avoids depending on downloads.mongodb.org for every run. The library still checks for newer versions daily.
+      - name: Compute MongoDB binaries cache settings
+        id: mongo-cache
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Windows) path="$LOCALAPPDATA\\ephemeral-mongo\\bin" ;;
+            macOS) path="$HOME/Library/Application Support/ephemeral-mongo/bin" ;;
+            *) path="$HOME/.local/share/ephemeral-mongo/bin" ;;
+          esac
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore MongoDB binaries
+        id: mongo-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.mongo-cache.outputs.path }}
+          key: mongo-bin-${{ matrix.os }}-${{ steps.mongo-cache.outputs.week }}
+          restore-keys: mongo-bin-${{ matrix.os }}-
+
       # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
+      # The package index is only refreshed when the install fails, as it's slow and the packages are usually already present
       - if: matrix.os == 'ubuntu-24.04'
         run: |
-          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap2 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
+          packages="libcurl4 libgssapi-krb5-2 libldap2 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5"
+          sudo apt-get install -y $packages || (sudo apt-get update && sudo apt-get install -y $packages)
 
       # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
       - if: matrix.os == 'ubuntu-22.04'
         run: |
-          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap-2.5-0 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
+          packages="libcurl4 libgssapi-krb5-2 libldap-2.5-0 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5"
+          sudo apt-get install -y $packages || (sudo apt-get update && sudo apt-get install -y $packages)
 
       - if: matrix.os == 'ubuntu-24.04'
         run: ./build.ps1
@@ -46,3 +84,34 @@ jobs:
       - if: matrix.os != 'ubuntu-24.04'
         run: ./build.ps1
         shell: pwsh
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: .output/TestResults
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Only the latest version of each binary is kept, older ones would otherwise accumulate in the cache week after week
+      - name: Remove outdated MongoDB binaries
+        if: ${{ !cancelled() && steps.mongo-cache-restore.outputs.cache-hit != 'true' }}
+        shell: pwsh
+        env:
+          MONGO_BIN_PATH: ${{ steps.mongo-cache.outputs.path }}
+        run: |
+          if (Test-Path $env:MONGO_BIN_PATH) {
+            Get-ChildItem $env:MONGO_BIN_PATH -Recurse -Directory |
+              Where-Object { $_.Name -as [version] } |
+              Group-Object { $_.Parent.FullName } |
+              ForEach-Object { $_.Group | Sort-Object { [version]$_.Name } -Descending | Select-Object -Skip 1 | Remove-Item -Recurse -Force }
+          }
+
+      - name: Save MongoDB binaries
+        if: ${{ !cancelled() && steps.mongo-cache-restore.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.mongo-cache.outputs.path }}
+          key: mongo-bin-${{ matrix.os }}-${{ steps.mongo-cache.outputs.week }}

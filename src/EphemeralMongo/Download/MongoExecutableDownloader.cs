@@ -9,6 +9,7 @@ internal static class MongoExecutableDownloader
     private const string MongoImportExeFileNameWithoutExt = "mongoimport";
     private const string MongoExportExeFileNameWithoutExt = "mongoexport";
     private const string LastCheckFileName = "last-check.txt";
+    private const string LockFileName = "download.lock";
 
     private static readonly string MongodExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongodExeFileNameWithoutExt + ".exe" : MongodExeFileNameWithoutExt;
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
@@ -40,7 +41,8 @@ internal static class MongoExecutableDownloader
         var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
         if (skipNewExeVersionCheck)
         {
-            var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath);
+            // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
+            var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath, deleteIfIncomplete: false);
             if (existingExeFilePath != null)
             {
                 return existingExeFilePath;
@@ -51,9 +53,11 @@ internal static class MongoExecutableDownloader
 
         try
         {
+            using var fileLock = await FileLock.AcquireAsync(Path.Combine(baseExeDirPath, LockFileName), cancellationToken).ConfigureAwait(false);
+
             if (skipNewExeVersionCheck)
             {
-                var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath);
+                var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath, deleteIfIncomplete: true);
                 if (existingExeFilePath != null)
                 {
                     return existingExeFilePath;
@@ -147,7 +151,8 @@ internal static class MongoExecutableDownloader
         var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
         if (skipNewExeVersionCheck)
         {
-            var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath);
+            // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
+            var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath, deleteIfIncomplete: false);
             if (existingExeFilePath.HasValue)
             {
                 return existingExeFilePath.Value;
@@ -158,9 +163,11 @@ internal static class MongoExecutableDownloader
 
         try
         {
+            using var fileLock = await FileLock.AcquireAsync(Path.Combine(baseExeDirPath, LockFileName), cancellationToken).ConfigureAwait(false);
+
             if (skipNewExeVersionCheck)
             {
-                var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath);
+                var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath, deleteIfIncomplete: true);
                 if (existingExeFilePath.HasValue)
                 {
                     return existingExeFilePath.Value;
@@ -192,7 +199,6 @@ internal static class MongoExecutableDownloader
             var tmpDownloadDirPath = Path.Combine(TmpDirPath, "downloads", tmpDirName);
             var tmpUncompressDirPath = Path.Combine(TmpDirPath, "uncompress", tmpDirName);
 
-            Directory.CreateDirectory(exeDirPath);
             Directory.CreateDirectory(tmpDownloadDirPath);
             Directory.CreateDirectory(tmpUncompressDirPath);
 
@@ -217,6 +223,8 @@ internal static class MongoExecutableDownloader
                 {
                     throw new EphemeralMongoException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
                 }
+
+                Directory.CreateDirectory(exeDirPath);
 
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
                 SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
@@ -265,7 +273,7 @@ internal static class MongoExecutableDownloader
         }
     }
 
-    private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath)
+    private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath, bool deleteIfIncomplete)
     {
         var latestVersion = FindLatestDirectoryVersion(baseExeDirPath);
         if (latestVersion == null)
@@ -281,6 +289,11 @@ internal static class MongoExecutableDownloader
             return exeFilePath;
         }
 
+        if (!deleteIfIncomplete)
+        {
+            return null;
+        }
+
         try
         {
             Directory.Delete(exeDirPath);
@@ -293,7 +306,7 @@ internal static class MongoExecutableDownloader
         return null;
     }
 
-    private static (string MongoImportExePath, string MongoExportExePath)? FindLatestExistingToolExeFilePaths(string baseExeDirPath)
+    private static (string MongoImportExePath, string MongoExportExePath)? FindLatestExistingToolExeFilePaths(string baseExeDirPath, bool deleteIfIncomplete)
     {
         var latestVersion = FindLatestDirectoryVersion(baseExeDirPath);
         if (latestVersion == null)
@@ -308,6 +321,11 @@ internal static class MongoExecutableDownloader
         if (File.Exists(mongoImportexeFilePath) && File.Exists(mongoExportexeFilePath))
         {
             return (mongoImportexeFilePath, mongoExportexeFilePath);
+        }
+
+        if (!deleteIfIncomplete)
+        {
+            return null;
         }
 
         try
