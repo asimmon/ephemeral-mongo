@@ -84,6 +84,8 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}
           path: .output/TestResults
+          # The output directory starts with a dot, which upload-artifact considers hidden
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: ignore
 
@@ -130,6 +132,8 @@ jobs:
         with:
           name: packages
           path: .output/*.nupkg
+          # The output directory starts with a dot, which upload-artifact considers hidden
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: error
 
