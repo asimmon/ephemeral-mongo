@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 
 namespace EphemeralMongo;
 
@@ -104,50 +103,6 @@ public sealed class HttpTransport
 #endif
     }
 
-    internal async Task<TValue> GetFromJsonAsync<TValue>(string url, CancellationToken cancellationToken)
-    {
-        TValue? value = default;
-        try
-        {
-            await ExecuteWithRetryAsync(
-                async ct =>
-                {
-                    value = await this.GetFromJsonOnceAsync<TValue>(url, ct).ConfigureAwait(false);
-                },
-                cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            throw new EphemeralMongoException($"An error occurred while parsing {url} as a JSON response", ex);
-        }
-
-        return value ?? throw new EphemeralMongoException($"An error occurred while parsing {url} as a JSON response");
-    }
-
-    private async Task<TValue?> GetFromJsonOnceAsync<TValue>(string url, CancellationToken cancellationToken)
-    {
-        // Release information documents are small, so the whole request must complete within the inactivity timeout
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(ReadInactivityTimeout);
-
-        using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
-        EnsureSuccessStatusCode(response);
-
-        using var timeoutRegistration = timeoutCts.Token.Register(response.Dispose);
-
-        Stream stream;
-#if NET8_0_OR_GREATER
-        await using ((stream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false)).ConfigureAwait(false))
-#elif NETSTANDARD2_1_OR_GREATER
-        await using ((stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false))
-#else
-        using (stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-#endif
-        {
-            return await JsonSerializer.DeserializeAsync<TValue>(stream, cancellationToken: timeoutCts.Token).ConfigureAwait(false);
-        }
-    }
-
     private static void EnsureSuccessStatusCode(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
@@ -186,9 +141,9 @@ public sealed class HttpTransport
     }
 
     // Network errors, interrupted streams, timeouts and transient HTTP status codes are retried.
-    // Non-transient HTTP status codes, unexpected JSON documents and caller cancellations are not.
+    // Non-transient HTTP status codes and caller cancellations are not.
     private static bool IsTransient(Exception ex, CancellationToken cancellationToken)
     {
-        return !cancellationToken.IsCancellationRequested && ex is not EphemeralMongoException and not JsonException;
+        return !cancellationToken.IsCancellationRequested && ex is not EphemeralMongoException;
     }
 }

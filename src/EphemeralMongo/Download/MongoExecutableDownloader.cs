@@ -10,6 +10,8 @@ internal static class MongoExecutableDownloader
     private const string MongoExportExeFileNameWithoutExt = "mongoexport";
     private const string LastCheckFileName = "last-check.txt";
     private const string LockFileName = "download.lock";
+    private const string MongodReleasesUrl = "https://downloads.mongodb.org/current.json";
+    private const string ToolsReleasesUrl = "https://downloads.mongodb.org/tools/db/release.json";
 
     private static readonly string MongodExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongodExeFileNameWithoutExt + ".exe" : MongodExeFileNameWithoutExt;
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
@@ -62,7 +64,9 @@ internal static class MongoExecutableDownloader
                 }
             }
 
-            var mongodVersions = await options.Transport.GetFromJsonAsync<MongoVersionsDto>("https://downloads.mongodb.org/current.json", cancellationToken).ConfigureAwait(false);
+            // Shared by all editions and major versions, so it lives in their parent directory
+            var releasesCacheFilePath = Path.Combine(AppDataDirectory.RootPath, "bin", MongodExeFileNameWithoutExt, "current.json");
+            var (mongodVersions, checkedAtUtc) = await ReleaseInformationCache.GetAsync<MongoVersionsDto>(options.Transport, MongodReleasesUrl, releasesCacheFilePath, options.NewVersionCheckTimeout, options.StandardErrorLogger, cancellationToken).ConfigureAwait(false);
 
             var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture) + ".", StringComparison.Ordinal))
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB major version {majorVersion}");
@@ -76,7 +80,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(exeFilePath))
             {
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return exeFilePath;
             }
 
@@ -122,7 +126,7 @@ internal static class MongoExecutableDownloader
                     }
                 }
 
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return exeFilePath;
             }
             finally
@@ -177,7 +181,8 @@ internal static class MongoExecutableDownloader
             var architecture = DownloadArchitectureHelper.GetArchitecture();
             var target = DownloadTargetHelper.GetTarget(options.Version);
 
-            var mongoToolsVersions = await options.Transport.GetFromJsonAsync<ToolsVersionsDto>("https://downloads.mongodb.org/tools/db/release.json", cancellationToken).ConfigureAwait(false);
+            var releasesCacheFilePath = Path.Combine(baseExeDirPath, "release.json");
+            var (mongoToolsVersions, checkedAtUtc) = await ReleaseInformationCache.GetAsync<ToolsVersionsDto>(options.Transport, ToolsReleasesUrl, releasesCacheFilePath, options.NewVersionCheckTimeout, options.StandardErrorLogger, cancellationToken).ConfigureAwait(false);
 
             var mongoToolsVersion = mongoToolsVersions.Versions.FirstOrDefault()
                 ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version");
@@ -192,7 +197,7 @@ internal static class MongoExecutableDownloader
 
             if (File.Exists(mongoImportExeFilePath) && File.Exists(mongoExportExeFilePath))
             {
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
 
@@ -230,7 +235,7 @@ internal static class MongoExecutableDownloader
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
                 SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
 
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
             finally
@@ -245,8 +250,16 @@ internal static class MongoExecutableDownloader
         }
     }
 
-    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath)
+    // The last check date is the date the release information was downloaded, which can be earlier than now when it was cached.
+    // Otherwise, binaries could be up to twice as old as NewVersionCheckTimeout before checking for a newer version.
+    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath, DateTime? checkedAtUtc)
     {
+        if (checkedAtUtc == null)
+        {
+            // The release information couldn't be downloaded and an outdated copy was used, so the next run should check again
+            return;
+        }
+
         const int maxAttempts = 3;
         const int retryDelayMs = 50;
 
@@ -260,6 +273,7 @@ internal static class MongoExecutableDownloader
 #else
                 await File.Create(lastCheckFilePath).DisposeAsync().ConfigureAwait(false);
 #endif
+                File.SetLastWriteTimeUtc(lastCheckFilePath, checkedAtUtc.Value);
                 return;
             }
             catch (IOException)

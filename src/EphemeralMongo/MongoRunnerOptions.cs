@@ -163,6 +163,7 @@ public sealed class MongoRunnerOptions
 
     /// <summary>
     /// The maximum timespan to wait before checking for a newer version of MongoDB binaries.
+    /// This is also how long the MongoDB release information downloaded during the check is cached and reused, including by other processes.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The timeout cannot be negative.</exception>
     public TimeSpan NewVersionCheckTimeout
