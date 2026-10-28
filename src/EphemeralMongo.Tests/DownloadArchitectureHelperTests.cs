@@ -23,10 +23,17 @@ public sealed class DownloadArchitectureHelperTests
     }
 
     [Fact]
-    public void GetArchitecture_ReturnsAarch64_ForArm64OnNonMacOS()
+    public void GetArchitecture_ReturnsAarch64_ForArm64OnLinux()
     {
         var result = DownloadArchitectureHelper.GetArchitecture(Architecture.Arm64, OSPlatform.Linux);
         Assert.Equal("aarch64", result);
+    }
+
+    [Fact]
+    public void GetArchitecture_ReturnsX86_64_ForArm64OnWindows()
+    {
+        var result = DownloadArchitectureHelper.GetArchitecture(Architecture.Arm64, OSPlatform.Windows);
+        Assert.Equal("x86_64", result);
     }
 
     [Fact]
