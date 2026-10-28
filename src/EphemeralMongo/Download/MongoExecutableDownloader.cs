@@ -16,7 +16,13 @@ internal static class MongoExecutableDownloader
     private static readonly string MongoExportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoExportExeFileNameWithoutExt + ".exe" : MongoExportExeFileNameWithoutExt;
 
     private static readonly string AppDataDirPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ephemeral-mongo");
-    private static readonly string TmpDirPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
+
+    // On Linux, /tmp is shared by all users, so another user could pre-create our temp directory and tamper with the archive
+    // or the extracted executables between the hash check and the copy. The per-user app data directory isn't writable by others.
+    // Windows and macOS temp directories are already per-user.
+    private static readonly string TmpDirPath = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+        ? Path.Combine(AppDataDirPath, "tmp")
+        : Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
 
     // The epoch for file time is 1/1/1601 12:00:00 AM
     // This value is returned by File.GetLastWriteTimeUtc when the file does not exist
