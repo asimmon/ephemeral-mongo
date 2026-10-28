@@ -9,9 +9,32 @@ internal sealed class NamedMutex
         this._mutexes = new Dictionary<string, ReferenceAwareMutex>(StringComparer.Ordinal);
     }
 
-    public Task WaitAsync(string name, CancellationToken cancellationToken)
+    // Useful for testing that unused mutexes are removed
+    internal int Count
     {
-        return this.GetOrAdd(name).WaitAsync(cancellationToken);
+        get
+        {
+            lock (this._mutexes)
+            {
+                return this._mutexes.Count;
+            }
+        }
+    }
+
+    public async Task WaitAsync(string name, CancellationToken cancellationToken)
+    {
+        var mutex = this.GetOrAdd(name);
+
+        try
+        {
+            await mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // The mutex wasn't acquired (e.g. cancellation), so only give back the reference without releasing the semaphore
+            this.RemoveReference(name, mutex);
+            throw;
+        }
     }
 
     private ReferenceAwareMutex GetOrAdd(string name)
@@ -41,14 +64,22 @@ internal sealed class NamedMutex
         {
             if (this._mutexes.TryGetValue(name, out var mutex))
             {
-                mutex.DecrementReferenceCount();
                 mutex.Release();
+                this.RemoveReference(name, mutex);
+            }
+        }
+    }
 
-                if (!mutex.IsReferenced)
-                {
-                    this._mutexes.Remove(name);
-                    mutex.Dispose();
-                }
+    private void RemoveReference(string name, ReferenceAwareMutex mutex)
+    {
+        lock (this._mutexes)
+        {
+            mutex.DecrementReferenceCount();
+
+            if (!mutex.IsReferenced)
+            {
+                this._mutexes.Remove(name);
+                mutex.Dispose();
             }
         }
     }

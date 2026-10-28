@@ -167,6 +167,8 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         this.Process.Exited += OnProcessExited;
 
+        MongoClient? client = null;
+
         try
         {
             var settings = new MongoClientSettings
@@ -180,7 +182,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                 }
             };
 
-            var client = new MongoClient(settings);
+            client = new MongoClient(settings);
             var admin = client.GetDatabase("admin");
 
             var replConfig = new BsonDocument(new List<BsonElement>
@@ -257,6 +259,13 @@ internal sealed class MongodProcess : BaseMongoProcess
         finally
         {
             this.Process.Exited -= OnProcessExited;
+
+            if (client != null)
+            {
+                // The cluster configurator captures local variables, so these settings are unique and the driver created a dedicated cluster for them.
+                // Disposing the client isn't enough as the driver keeps clusters registered (with their background monitoring) for the lifetime of the app.
+                ClusterRegistry.Instance.UnregisterAndDisposeCluster(client.Cluster);
+            }
         }
     }
 

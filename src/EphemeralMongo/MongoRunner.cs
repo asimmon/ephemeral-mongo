@@ -164,6 +164,12 @@ public sealed class MongoRunner
             return;
         }
 
+        if (this._options.DataDirectoryLifetime is not { } dataDirectoryLifetime)
+        {
+            // Cleanup was disabled by user
+            return;
+        }
+
         try
         {
             var isCleanupOngoing = Interlocked.Increment(ref _ongoingRootDataDirectoryCleanupCount) > 1;
@@ -179,7 +185,7 @@ public sealed class MongoRunner
             }
             catch (Exception ex)
             {
-                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
+                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{this._options.RootDataDirectoryPath}': {ex.Message}");
                 return;
             }
 
@@ -188,7 +194,7 @@ public sealed class MongoRunner
                 try
                 {
                     var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
-                    if (dataDirectoryAge >= this._options.DataDirectoryLifetime)
+                    if (dataDirectoryAge >= dataDirectoryLifetime)
                     {
                         this._fileSystem.DeleteDirectory(dataDirectoryPath);
                     }
@@ -397,7 +403,11 @@ public sealed class MongoRunner
 
             try
             {
+#if MONGODB_V3
+                using var client = new MongoClient(this.ConnectionString);
+#else
                 var client = new MongoClient(this.ConnectionString);
+#endif
                 var admin = client.GetDatabase("admin");
 
                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(defaultShutdownTimeoutInSeconds)))
