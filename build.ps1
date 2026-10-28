@@ -2,7 +2,10 @@
 
 param(
   # The release workflow only runs once CI has already tested the same commit on every OS
-  [switch]$SkipTests
+  [switch]$SkipTests,
+
+  # Releases are built with an explicit version instead of the prerelease version GitVersion computes from the git history
+  [string]$Version
 )
 
 Begin {
@@ -21,13 +24,19 @@ Process {
   $outputDir = Join-Path $PSScriptRoot ".output"
   $testResultsDir = Join-Path $outputDir "TestResults"
 
+  # The .NET SDK derives the package, assembly, file and informational versions from Version, like GitVersion does
+  $versionArgs = @()
+  if ($Version) {
+    $versionArgs = @("-p:DisableGitVersionTask=true", "-p:Version=$Version")
+  }
+
   try {
     Push-Location $workingDir
     Remove-Item $outputDir -Force -Recurse -ErrorAction SilentlyContinue
 
-    Exec { & dotnet clean -c Release }
+    Exec { & dotnet clean -c Release @versionArgs }
 
-    Exec { & dotnet build -c Release }
+    Exec { & dotnet build -c Release @versionArgs }
 
     if (-not $SkipTests) {
       # https://aka.ms/dotnet-test
@@ -43,7 +52,7 @@ Process {
     }
 
     # Packages are pushed by dedicated CI jobs, so that API keys are never exposed to the build and its dependencies
-    Exec { & dotnet pack -c Release --no-build --output "$outputDir" }
+    Exec { & dotnet pack -c Release --no-build --output "$outputDir" @versionArgs }
   }
   finally {
     Pop-Location
