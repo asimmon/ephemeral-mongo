@@ -194,10 +194,19 @@ public sealed class MongoRunner
                 try
                 {
                     var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
-                    if (dataDirectoryAge >= dataDirectoryLifetime)
+                    if (dataDirectoryAge < dataDirectoryLifetime)
                     {
-                        this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                        continue;
                     }
+
+                    // A running mongod holds an exclusive lock on this file, whereas an abandoned one (crashed or killed) doesn't
+                    var lockFilePath = Path.Combine(dataDirectoryPath, "mongod.lock");
+                    if (this._fileSystem.IsFileLocked(lockFilePath))
+                    {
+                        continue;
+                    }
+
+                    this._fileSystem.DeleteDirectory(dataDirectoryPath);
                 }
                 catch (Exception ex)
                 {

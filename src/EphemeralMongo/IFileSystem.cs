@@ -12,5 +12,7 @@ internal interface IFileSystem
 
     DateTime GetDirectoryCreationTimeUtc(string path);
 
+    bool IsFileLocked(string path);
+
     void MakeFileExecutable(string path);
 }
