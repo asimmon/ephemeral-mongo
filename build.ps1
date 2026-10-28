@@ -32,12 +32,13 @@ Process {
     if (-not $SkipTests) {
       # https://aka.ms/dotnet-test
       # TRX reports and hang dumps end up in the test results directory, which CI uploads when tests fail
+      # The default output only prints the captured mongod logs of failed tests, passed tests would otherwise flood the console with them
       $testArgs = @("--results-directory", $testResultsDir, "--report-xunit-trx", "--hangdump", "--hangdump-timeout", "15m")
 
       if ($IsWindows) {
-        Exec { & dotnet test -c Release --no-build --no-progress --output Detailed @testArgs --filter-query "/[Category!=SlowOnWindows]" }
+        Exec { & dotnet test -c Release --no-build --no-progress @testArgs --filter-query "/[Category!=SlowOnWindows]" }
       } else {
-        Exec { & dotnet test -c Release --no-build --no-progress --output Detailed @testArgs }
+        Exec { & dotnet test -c Release --no-build --no-progress @testArgs }
       }
     }
 
