@@ -1,9 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "platform": "github",
   "labels": ["renovate"],
   "extends": [
-    "config:base",
+    "config:recommended",
     ":rebaseStalePrs",
     "helpers:pinGitHubActionDigests"
   ],
@@ -11,7 +10,7 @@
     "github-actions",
     "nuget"
   ],
-  "stabilityDays": 3,
+  "minimumReleaseAge": "3 days",
   "prHourlyLimit": 0,
   "prConcurrentLimit": 0,
   "branchConcurrentLimit": 0,
