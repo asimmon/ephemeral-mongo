@@ -7,54 +7,132 @@ namespace EphemeralMongo;
 [SuppressMessage("Maintainability", "CA1510", Justification = "ArgumentNullException.ThrowIfNull isn't worth it when multi-targeting")]
 public sealed class MongoRunnerPool : IDisposable
 {
-    private readonly Guid _id;
-    private readonly MongoRunnerOptions _options;
+    private static readonly TimeSpan DefaultIdleTimeout = TimeSpan.FromSeconds(10);
+
+    private readonly Func<CancellationToken, Task<IMongoRunner>> _runnerFactory;
     private readonly int _maxRentalsPerRunner;
-    private readonly SemaphoreSlim _mutex = new SemaphoreSlim(1, 1);
-    private readonly HashSet<PooledMongoRunnerInfo> _runners = [];
-    private int _isDisposed;
+    private readonly TimeSpan _idleTimeout;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+    private readonly Logger? _errorLogger;
+
+    // Guards every mutable field below, as well as the mutable state of each RunnerSlot
+    private readonly object _lock = new();
+    private readonly CancellationTokenSource _disposeCts = new();
+
+    // Every runner that is starting or alive, including retired ones that still have outstanding rentals
+    private readonly HashSet<RunnerSlot> _slots = [];
+
+    // The runner new rentals are served from, null when none exists yet or the previous one was retired
+    private RunnerSlot? _current;
+    private bool _isDisposed;
 
     public MongoRunnerPool(MongoRunnerOptions options, int maxRentalsPerRunner = 100)
+        : this(CreateRunnerFactory(options), maxRentalsPerRunner, DefaultIdleTimeout, Task.Delay, options?.StandardErrorLogger)
     {
-        this._id = Guid.NewGuid();
-        this._options = options ?? throw new ArgumentNullException(nameof(options));
+    }
+
+    internal MongoRunnerPool(Func<CancellationToken, Task<IMongoRunner>> runnerFactory, int maxRentalsPerRunner, TimeSpan idleTimeout, Func<TimeSpan, CancellationToken, Task> delay, Logger? errorLogger)
+    {
+        this._runnerFactory = runnerFactory;
         this._maxRentalsPerRunner = maxRentalsPerRunner < 1
             ? throw new ArgumentOutOfRangeException(nameof(maxRentalsPerRunner), "Maximum rentals per runner must be greater than 0")
             : maxRentalsPerRunner;
+        this._idleTimeout = idleTimeout;
+        this._delay = delay;
+        this._errorLogger = errorLogger;
+    }
+
+    private static Func<CancellationToken, Task<IMongoRunner>> CreateRunnerFactory(MongoRunnerOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        // Retired and current runners can be alive at the same time, so they can't share a port or a data directory
+        if (options.MongoPort != null)
+        {
+            throw new ArgumentException($"{nameof(MongoRunnerOptions.MongoPort)} can't be set when using a pool, as multiple runners may be alive at the same time", nameof(options));
+        }
+
+        if (options.DataDirectory != null)
+        {
+            throw new ArgumentException($"{nameof(MongoRunnerOptions.DataDirectory)} can't be set when using a pool, as multiple runners may be alive at the same time", nameof(options));
+        }
+
+        // Snapshot the options so that later changes made by the caller don't affect runners started by this pool
+        var optionsCopy = new MongoRunnerOptions(options);
+        return cancellationToken => MongoRunner.RunAsync(optionsCopy, cancellationToken);
     }
 
     public async Task<IMongoRunner> RentAsync(CancellationToken cancellationToken = default)
     {
-        return await this.RentInternalAsync(cancellationToken).ConfigureAwait(false);
-    }
+        cancellationToken.ThrowIfCancellationRequested();
 
-    private async Task<PooledMongoRunner> RentInternalAsync(CancellationToken cancellationToken)
-    {
-        if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+        RunnerSlot slot;
+        var mustStartSlot = false;
+
+        lock (this._lock)
         {
-            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+            if (this._isDisposed)
+            {
+                throw new ObjectDisposedException(nameof(MongoRunnerPool));
+            }
+
+            if (this._current == null)
+            {
+                this._current = new RunnerSlot(this._disposeCts.Token);
+                this._slots.Add(this._current);
+                mustStartSlot = true;
+            }
+
+            slot = this._current;
+            slot.TotalRentals++;
+            slot.ActiveRentals++;
+
+            // Invalidates any pending idle expiration
+            slot.IdleVersion++;
+
+            if (slot.TotalRentals >= this._maxRentalsPerRunner)
+            {
+                // Retire the runner, it will be stopped once all its rentals are returned
+                this._current = null;
+            }
         }
 
-        await this._mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (mustStartSlot)
+        {
+            // Run the startup outside of the caller's context, so it doesn't depend on the caller's cancellation token
+            // as other callers may be waiting for this same runner
+            _ = Task.Run(() => this.StartSlotAsync(slot), CancellationToken.None);
+        }
+
+        IMongoRunner underlyingRunner;
 
         try
         {
-            if (this._runners.FirstOrDefault(r => r.TotalRentals < this._maxRentalsPerRunner) is { } availableRunner)
-            {
-                availableRunner.TotalRentals++;
-                return new PooledMongoRunner(availableRunner);
-            }
-
-            var underlyingRunner = await MongoRunner.RunAsync(this._options, cancellationToken).ConfigureAwait(false);
-            var runnerInfo = new PooledMongoRunnerInfo(underlyingRunner, this._id);
-            this._runners.Add(runnerInfo);
-
-            return new PooledMongoRunner(runnerInfo);
+            underlyingRunner = await WaitAsync(slot.Startup.Task, cancellationToken).ConfigureAwait(false);
         }
-        finally
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && Volatile.Read(ref this._isDisposed))
         {
-            this._mutex.Release();
+            this.Release(slot);
+#pragma warning disable MA0054 // The cancellation is an implementation detail of the disposal, the caller only needs to know the pool is disposed
+            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+#pragma warning restore MA0054
         }
+        catch
+        {
+            this.Release(slot);
+            throw;
+        }
+
+        if (Volatile.Read(ref this._isDisposed))
+        {
+            // The pool was disposed while this rental was waiting for the runner to start
+            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+        }
+
+        return new RentedMongoRunner(this, slot, underlyingRunner);
     }
 
     public IMongoRunner Rent(CancellationToken cancellationToken = default)
@@ -69,155 +147,310 @@ public sealed class MongoRunnerPool : IDisposable
             throw new ArgumentNullException(nameof(runner));
         }
 
-        if (Interlocked.CompareExchange(ref this._isDisposed, 0, 0) == 1)
+        if (runner is not RentedMongoRunner rentedRunner || rentedRunner.Pool != this)
         {
-            throw new ObjectDisposedException(nameof(MongoRunnerPool));
+            throw new ArgumentException("The runner was not rented from this pool", nameof(runner));
         }
 
-        if (runner is not PooledMongoRunner pooledRunner)
-        {
-            throw new ArgumentException("The returned runner was not pooled", nameof(runner));
-        }
-
-        if (pooledRunner.Info.ParentPoolId != this._id)
-        {
-            throw new ArgumentException("The returned runner was not rented from this pool", nameof(runner));
-        }
-
-        this.ReturnInternal(pooledRunner);
+        rentedRunner.Dispose();
     }
 
-    private void ReturnInternal(PooledMongoRunner pooledRunner)
+    private async Task StartSlotAsync(RunnerSlot slot)
     {
-        this._mutex.Wait();
-
-        var disposeUnderlyingRunner = false;
-
         try
         {
-            if (!pooledRunner.Info.RentedBy.Remove(pooledRunner.Id))
+            var runner = await this._runnerFactory(slot.StartupCancellationToken).ConfigureAwait(false);
+            slot.Startup.TrySetResult(runner);
+        }
+        catch (Exception ex)
+        {
+            lock (this._lock)
             {
-                // already returned
+                // Ensure that callers waiting for this runner, or renting after this point, never get this failed runner again.
+                // This must happen before the startup task completes so that returning rentals don't put it in idle mode.
+                if (this._current == slot)
+                {
+                    this._current = null;
+                }
+
+                if (slot.ActiveRentals == 0)
+                {
+                    this._slots.Remove(slot);
+                }
+            }
+
+            if (ex is OperationCanceledException && slot.StartupCancellationToken.IsCancellationRequested)
+            {
+                slot.Startup.TrySetCanceled(slot.StartupCancellationToken);
+            }
+            else
+            {
+                slot.Startup.TrySetException(ex);
+            }
+        }
+    }
+
+    private void Release(RunnerSlot slot)
+    {
+        var mustStopSlot = false;
+        var mustExpireWhenIdle = false;
+        var idleVersion = 0;
+        var idleCancellationToken = CancellationToken.None;
+
+        lock (this._lock)
+        {
+            if (this._isDisposed)
+            {
+                // All runners were already stopped by the pool disposal
                 return;
             }
 
-            if (pooledRunner.Info.RentedBy.Count == 0 || pooledRunner.Info.TotalRentals >= this._maxRentalsPerRunner)
+            slot.ActiveRentals--;
+
+            if (slot.ActiveRentals > 0)
             {
-                disposeUnderlyingRunner = this._runners.Remove(pooledRunner.Info);
+                return;
+            }
+
+            if (this._current == slot)
+            {
+                // Keep the runner alive for a little while in case it's rented again soon
+                mustExpireWhenIdle = true;
+                idleVersion = ++slot.IdleVersion;
+                idleCancellationToken = this._disposeCts.Token;
+            }
+            else
+            {
+                mustStopSlot = this._slots.Remove(slot);
             }
         }
-        finally
+
+        if (mustStopSlot)
         {
-            this._mutex.Release();
+            this.StopSlotQuietly(slot);
+        }
+        else if (mustExpireWhenIdle)
+        {
+            _ = this.ExpireWhenIdleAsync(slot, idleVersion, idleCancellationToken);
+        }
+    }
+
+    private async Task ExpireWhenIdleAsync(RunnerSlot slot, int idleVersion, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await this._delay(this._idleTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The pool was disposed and took care of stopping the runner
+            return;
         }
 
-        if (disposeUnderlyingRunner)
+        lock (this._lock)
         {
-            pooledRunner.Info.UnderlyingRunner.Dispose();
+            if (this._isDisposed || slot.IdleVersion != idleVersion)
+            {
+                // Rented again since it became idle, or already handled by the pool disposal
+                return;
+            }
+
+            if (this._current == slot)
+            {
+                this._current = null;
+            }
+
+            if (!this._slots.Remove(slot))
+            {
+                return;
+            }
         }
+
+        this.StopSlotQuietly(slot);
+    }
+
+    private void StopSlotQuietly(RunnerSlot slot)
+    {
+        // A slot can be stopped while its runner is still starting when all the callers waiting for it gave up
+        _ = slot.Startup.Task.ContinueWith(
+            static (startupTask, state) =>
+            {
+                var (pool, slot) = ((MongoRunnerPool, RunnerSlot))state!;
+
+                if (startupTask.Status == TaskStatus.RanToCompletion)
+                {
+                    pool.StopRunnerQuietly(slot, startupTask.Result);
+                }
+            },
+            (this, slot),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     public void Dispose()
     {
-        if (Interlocked.CompareExchange(ref this._isDisposed, 1, 0) == 1)
-        {
-            return;
-        }
+        List<RunnerSlot> slots;
 
-        List<PooledMongoRunnerInfo>? runnersToDispose;
-
-        this._mutex.Wait();
-
-        try
+        lock (this._lock)
         {
-            runnersToDispose = [.. this._runners];
-            this._runners.Clear();
-        }
-        finally
-        {
-            this._mutex.Release();
-        }
-
-        if (runnersToDispose.Count > 0)
-        {
-            foreach (var runner in runnersToDispose)
+            if (this._isDisposed)
             {
-                try
-                {
-                    runner.UnderlyingRunner.Dispose();
-                }
-                catch
-                {
-                    // ignore
-                }
+                return;
             }
+
+            Volatile.Write(ref this._isDisposed, true);
+            slots = [.. this._slots];
+            this._slots.Clear();
+            this._current = null;
+        }
+
+        // Abort runners that are still starting and pending idle expirations
+        this._disposeCts.Cancel();
+
+        foreach (var slot in slots)
+        {
+            IMongoRunner runner;
 
             try
             {
-                this._mutex.Dispose();
+                runner = slot.Startup.Task.ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch
             {
-                // ignore
+                // The runner failed to start or its startup was canceled, there's nothing to stop
+                continue;
+            }
+
+            this.StopRunnerQuietly(slot, runner);
+        }
+
+        this._disposeCts.Dispose();
+    }
+
+    private void StopRunnerQuietly(RunnerSlot slot, IMongoRunner runner)
+    {
+        try
+        {
+            slot.StopRunner(runner);
+        }
+        catch (Exception ex)
+        {
+            // Stopping a runner is a side effect of returning it or disposing the pool, it shouldn't fail the caller
+            this._errorLogger?.Invoke($"An error occurred while stopping a pooled MongoDB runner: {ex}");
+        }
+    }
+
+    private static async Task<T> WaitAsync<T>(Task<T> task, CancellationToken cancellationToken)
+    {
+#if NET8_0_OR_GREATER
+        return await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+#else
+        if (!cancellationToken.CanBeCanceled || task.IsCompleted)
+        {
+            return await task.ConfigureAwait(false);
+        }
+
+        var cancellationTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        using (cancellationToken.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), cancellationTcs))
+        {
+            if (await Task.WhenAny(task, cancellationTcs.Task).ConfigureAwait(false) != task)
+            {
+                throw new OperationCanceledException(cancellationToken);
             }
         }
-        else
+
+        return await task.ConfigureAwait(false);
+#endif
+    }
+
+    private sealed class RunnerSlot(CancellationToken startupCancellationToken)
+    {
+        private int _isStopped;
+
+        public TaskCompletionSource<IMongoRunner> Startup { get; } = new TaskCompletionSource<IMongoRunner>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CancellationToken StartupCancellationToken { get; } = startupCancellationToken;
+
+        // Number of times this runner was handed out, used to decide when to retire it
+        public int TotalRentals { get; set; }
+
+        // Number of rentals that haven't been returned yet
+        public int ActiveRentals { get; set; }
+
+        // Incremented each time the runner is rented or becomes idle, so that stale idle expirations are ignored
+        public int IdleVersion { get; set; }
+
+        public void StopRunner(IMongoRunner runner)
         {
-            this._mutex.Dispose();
+            // Both the pool disposal and a return or idle expiration may race to stop the same runner
+            if (Interlocked.Exchange(ref this._isStopped, 1) == 0)
+            {
+                runner.Dispose();
+            }
         }
     }
 
-    private sealed class PooledMongoRunnerInfo(IMongoRunner underlyingRunner, Guid parentPoolId)
+    private sealed class RentedMongoRunner(MongoRunnerPool pool, RunnerSlot slot, IMongoRunner underlyingRunner) : IMongoRunner
     {
-        public IMongoRunner UnderlyingRunner { get; } = underlyingRunner;
+        private int _isReturned;
 
-        public Guid ParentPoolId { get; } = parentPoolId;
+        public MongoRunnerPool Pool { get; } = pool;
 
-        public int TotalRentals { get; set; } = 1;
-
-        public HashSet<Guid> RentedBy { get; } = [];
-    }
-
-    private sealed class PooledMongoRunner : IMongoRunner
-    {
-        public PooledMongoRunner(PooledMongoRunnerInfo info)
+        public string ConnectionString
         {
-            this.Id = Guid.NewGuid();
-            this.Info = info;
-
-            info.RentedBy.Add(this.Id);
+            get
+            {
+                this.ThrowIfUnusable();
+                return underlyingRunner.ConnectionString;
+            }
         }
-
-        public Guid Id { get; }
-
-        public PooledMongoRunnerInfo Info { get; }
-
-        public string ConnectionString => this.Info.UnderlyingRunner.ConnectionString;
 
         public Task ImportAsync(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
-            return this.Info.UnderlyingRunner.ImportAsync(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
+            this.ThrowIfUnusable();
+            return underlyingRunner.ImportAsync(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
         }
 
         public void Import(string database, string collection, string inputFilePath, string[]? additionalArguments = null, bool drop = false, CancellationToken cancellationToken = default)
         {
-            this.Info.UnderlyingRunner.Import(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
+            this.ThrowIfUnusable();
+            underlyingRunner.Import(database, collection, inputFilePath, additionalArguments, drop, cancellationToken);
         }
 
         public Task ExportAsync(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
-            return this.Info.UnderlyingRunner.ExportAsync(database, collection, outputFilePath, additionalArguments, cancellationToken);
+            this.ThrowIfUnusable();
+            return underlyingRunner.ExportAsync(database, collection, outputFilePath, additionalArguments, cancellationToken);
         }
 
         public void Export(string database, string collection, string outputFilePath, string[]? additionalArguments = null, CancellationToken cancellationToken = default)
         {
-            this.Info.UnderlyingRunner.Export(database, collection, outputFilePath, additionalArguments, cancellationToken);
+            this.ThrowIfUnusable();
+            underlyingRunner.Export(database, collection, outputFilePath, additionalArguments, cancellationToken);
         }
 
+        private void ThrowIfUnusable()
+        {
+            if (Volatile.Read(ref this._isReturned) == 1)
+            {
+                throw new ObjectDisposedException("This MongoDB runner was returned to the pool");
+            }
+
+            if (Volatile.Read(ref this.Pool._isDisposed))
+            {
+                throw new ObjectDisposedException(nameof(MongoRunnerPool));
+            }
+        }
+
+        // Disposing a rented runner returns it to the pool
         public void Dispose()
         {
-            // Prevent end-users from disposing the underlying runner, as this could impact other rentals.
-            // Let the pool manage the disposal of runners.
+            if (Interlocked.Exchange(ref this._isReturned, 1) == 0)
+            {
+                this.Pool.Release(slot);
+            }
         }
     }
 }
