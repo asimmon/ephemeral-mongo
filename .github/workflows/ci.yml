@@ -27,14 +27,14 @@ jobs:
         os: [ubuntu-24.04, ubuntu-22.04, macos-15, windows-2025]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
 
       - name: Cache NuGet packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: nuget-${{ matrix.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', 'src/**/*.csproj') }}
@@ -55,7 +55,7 @@ jobs:
 
       - name: Restore MongoDB binaries
         id: mongo-cache-restore
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.mongo-cache.outputs.path }}
           key: mongo-bin-${{ matrix.os }}-${{ steps.mongo-cache.outputs.week }}
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results-${{ matrix.os }}
           path: .output/TestResults
@@ -111,7 +111,7 @@ jobs:
       - name: Save MongoDB binaries
         if: ${{ !cancelled() && steps.mongo-cache-restore.outputs.cache-hit != 'true' }}
         continue-on-error: true
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.mongo-cache.outputs.path }}
           key: mongo-bin-${{ matrix.os }}-${{ steps.mongo-cache.outputs.week }}
