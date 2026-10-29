@@ -1,20 +1,22 @@
 <!-- omit from toc -->
 # EphemeralMongo
 
-[![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github&label=ci)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml) [![publish](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github&label=release)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
+[![ci](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/ci.yml?logo=github&label=ci)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/ci.yml) [![release](https://img.shields.io/github/actions/workflow/status/asimmon/ephemeral-mongo/release.yml?logo=github&label=release)](https://github.com/asimmon/ephemeral-mongo/actions/workflows/release.yml)
 
 - [About](#about)
 - [Installation](#installation)
 - [Usage](#usage)
 - [How it works](#how-it-works)
+- [Faster mongod instances for tests](#faster-mongod-instances-for-tests)
 - [MongoDB Enterprise and in-memory storage engine](#mongodb-enterprise-and-in-memory-storage-engine)
 - [Windows Defender Firewall prompt](#windows-defender-firewall-prompt)
 - [Reusing runners across tests](#reusing-runners-across-tests)
+- [Troubleshooting](#troubleshooting)
 - [Changelog](#changelog)
 
 ## About
 
-**EphemeralMongo** is a .NET library that provides a simple way to run temporary and disposable MongoDB servers for integration tests and local debugging, without any dependencies or external tools. It is as simple as:
+**EphemeralMongo** is a .NET library that provides a simple way to run temporary and disposable MongoDB servers for integration tests and local debugging, without installing MongoDB or any external tools. The MongoDB binaries are downloaded at runtime. It is as simple as:
 
 ```csharp
 using var runner = await MongoRunner.RunAsync();
@@ -30,9 +32,9 @@ List of features and capabilities:
 - Access to **MongoDB 6**, **7**, **8**, and **9**.
 - Access to **MongoDB Community** and **Enterprise editions**.
 - Support for **single-node replica sets**, enabling transactions and change streams.
-- _mongoexport_ and _mongoimport_ tools for [exporting](https://www.mongodb.com/docs/database-tools/mongoexport/) and [importing](https://docs.mongodb.com/database-tools/mongoimport/) collections.
-- Support for .NET Standard 2.0, .NET Standard 2.1, .NET 8.0 and later.
-- Support for Linux, macOS, and Windows.
+- _mongoexport_ and _mongoimport_ tools for [exporting](https://www.mongodb.com/docs/database-tools/mongoexport/) and [importing](https://www.mongodb.com/docs/database-tools/mongoimport/) collections.
+- Support for .NET Framework 4.7.2, .NET Standard 2.1 (2.0 for `EphemeralMongo.v2`), .NET 8.0 and later.
+- Support for Linux, macOS, and Windows, on x64 and ARM64.
 - Supports **MongoDB C# driver version 2.x and 3.x**.
 
 This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/Mongo2Go) and expands upon its foundation.
@@ -41,8 +43,8 @@ This project follows in the footsteps of [Mongo2Go](https://github.com/Mongo2Go/
 
 | Package | Description |
 | --- | --- |
-| [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo/) | Install this package if you use MongoDB C# driver version 3.x. |
-| [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.v2.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo.v2/) | Install this package if you use MongoDB C# driver version 2.x. |
+| [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo/) | Install this package if you use MongoDB C# driver version 3.x (3.9.0 or later). |
+| [![nuget](https://img.shields.io/nuget/v/EphemeralMongo.v2.svg?logo=nuget)](https://www.nuget.org/packages/EphemeralMongo.v2/) | Install this package if you use MongoDB C# driver version 2.x (2.28.0 or later). |
 
 ## Usage
 
@@ -91,6 +93,7 @@ var options = new MongoRunnerOptions
     ReplicaSetSetupTimeout = TimeSpan.FromSeconds(5),
 
     // The duration for which temporary data directories will be kept.
+    // Directories still used by a running mongod are always kept, and null disables the cleanup.
     // Ignored when you provide your own data directory. Default is 12 hours.
     DataDirectoryLifetime = TimeSpan.FromDays(1),
 
@@ -106,12 +109,12 @@ var options = new MongoRunnerOptions
 
 ```csharp
 // Disposing the runner will kill the MongoDB process (mongod) and delete the associated data directory
-using (await var runner = MongoRunner.RunAsync(options))
+using (var runner = await MongoRunner.RunAsync(options))
 {
     var database = new MongoClient(runner.ConnectionString).GetDatabase("default");
 
     // Do something with the database
-    database.CreateCollection("people");
+    await database.CreateCollectionAsync("people");
 
     // Export a collection to a file. A synchronous version is also available.
     await runner.ExportAsync("default", "people", "/path/to/default.json");
@@ -123,13 +126,31 @@ using (await var runner = MongoRunner.RunAsync(options))
 
 ## How it works
 
-* At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded when needed (if not already present) and extracted to your local application data directory.
+* At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded when needed (if not already present) and extracted to an `ephemeral-mongo` directory in your local application data directory, which also holds temporary files and default data directories:
+  * Windows: `%LOCALAPPDATA%\ephemeral-mongo`
+  * Linux: `~/.local/share/ephemeral-mongo`
+  * macOS: `~/Library/Application Support/ephemeral-mongo`
+* In CI, cache the `bin` subdirectory to avoid downloading the binaries on every run. Without network access, provide your own binaries with `BinaryDirectory`.
 * Official download links are retrieved from [this JSON file](https://downloads.mongodb.org/current.json) for the server and [this JSON file](https://downloads.mongodb.org/tools/db/release.json) for the tools.
 * These JSON files are cached in the same directory for `NewVersionCheckTimeout` and shared by all processes, so parallel test runs request them only once. If they can't be downloaded again, the outdated cached copy is used.
-* SHA256 checksums are used to verify the integrity of the downloaded files.
-* `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process with a random available port.
+* Archives are only downloaded over HTTPS from mongodb.org, and SHA256 checksums are used to verify their integrity. Parallel test runs share a single download.
+* On Windows ARM64, the x64 binaries run through Windows 11's x64 emulation, as MongoDB doesn't publish ARM64 builds for Windows.
+* `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process. Unless `MongoPort` is set, it uses a random available port, and retries with another one if that port was taken in the meantime.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
-* By default, a unique temporary data directory is used and deleted when the `runner` is disposed.
+* By default, a unique temporary data directory is used and deleted when the `runner` is disposed. Leftover data directories older than `DataDirectoryLifetime` are deleted on later runs.
+
+## Faster mongod instances for tests
+
+By default, each `mongod` sizes its cache to about half of the machine's memory and writes diagnostic data (FTDC) to disk. When your tests start many instances in parallel, limit the cache and disable diagnostic data collection, like EphemeralMongo's own tests do:
+
+```csharp
+var options = new MongoRunnerOptions
+{
+    AdditionalArguments = ["--quiet", "--wiredTigerCacheSizeGB", "0.25", "--setParameter", "diagnosticDataCollectionEnabled=false"],
+};
+```
+
+With the Enterprise edition, the [in-memory storage engine](#mongodb-enterprise-and-in-memory-storage-engine) is even faster.
 
 ## MongoDB Enterprise and in-memory storage engine
 
@@ -143,12 +164,14 @@ The Enterprise edition provides access to the in-memory storage engine, which is
 var options = new MongoRunnerOptions
 {
     Edition = MongoEdition.Enterprise,
-    AdditionalArguments = ["--storageEngine", "inMemory"],
+    AdditionalArguments = ["--quiet", "--storageEngine", "inMemory", "--inMemorySizeGB", "0.25", "--setParameter", "diagnosticDataCollectionEnabled=false"],
 };
 
 using var runner = await MongoRunner.RunAsync(options);
 // [...]
 ```
+
+Like the WiredTiger cache, the in-memory storage engine uses about half of the machine's memory by default, so `--inMemorySizeGB` keeps parallel instances in check.
 
 ## Windows Defender Firewall prompt
 
@@ -159,7 +182,7 @@ This is because EphemeralMongo starts the `mongod.exe` process from your local a
 
 Avoid calling `MongoRunner.Run` or `MongoRunner.RunAsync` concurrently, as this will create many `mongod` processes and make your operating system slower. Instead, try to use a single instance and reuse it - create as many databases as you need, one per test, for example.
 
-For this, version 3.0.0 introduces a new *experimental* `PooledMongoRunner` class. Once created, you can rent and return `MongoRunner` instances. Once rented a certain number of times, new instances will be created. This way, `mongod` processes will be reused, but not too often. This will avoid uncontrolled usage of system resources.
+For this, version 3.0.0 introduces a new *experimental* `MongoRunnerPool` class. Once created, you can rent and return `IMongoRunner` instances. Once a runner has been rented `maxRentalsPerRunner` times (100 by default), a new one is created, and the previous one is stopped when all its rentals are returned. This way, `mongod` processes will be reused, but not too often. This will avoid uncontrolled usage of system resources.
 
 ```csharp
 var options = new MongoRunnerOptions
@@ -168,7 +191,7 @@ var options = new MongoRunnerOptions
     UseSingleNodeReplicaSet = true
 };
 
-using var pool = new MongoRunnerPool(options);
+using var pool = new MongoRunnerPool(options, maxRentalsPerRunner: 2);
 
 var runner1 = await pool.RentAsync();
 var runner2 = await pool.RentAsync();
@@ -185,23 +208,26 @@ finally
     pool.Return(runner2);
 }
 
-// This is a new mongod process
+// This is a new mongod process, as the previous one was rented twice
 var runner3 = await pool.RentAsync();
 ```
 
+A runner that isn't rented for 10 seconds is stopped. `MongoPort` and `DataDirectory` can't be set when using a pool, as multiple runners may be alive at the same time.
+
+As the pool is experimental, using it produces the `EMEX0001` diagnostic. Suppress it with `#pragma warning disable EMEX0001` or in your project file:
+
+```xml
+<PropertyGroup>
+  <NoWarn>$(NoWarn);EMEX0001</NoWarn>
+</PropertyGroup>
+```
+
+## Troubleshooting
+
+* When `mongod` fails to start, an `EphemeralMongoException` is thrown with the full process path, its arguments, and the errors logged by `mongod`.
+* When `mongoimport` or `mongoexport` fails, an `EphemeralMongoException` is thrown with the command line and the tool's output.
+* `StandardErrorLogger` also receives the library's own warnings, such as when retrying with another port or using outdated release information that couldn't be downloaded again.
+
 ## Changelog
 
-### 3.0.0
-
-See [this announcement](https://github.com/asimmon/ephemeral-mongo/issues/80).
-
-### 2.0.0
-
-- **Breaking change**: Support for MongoDB 5.0 and 6.0 has been removed, as their [end-of-life](https://www.mongodb.com/legal/support-policy/lifecycles) has passed.
-- **Breaking change**: arm64 is now the default target for macOS. The previous target was x64.
-- **Breaking change**: The Linux runtime package now uses Ubuntu 22.04's MongoDB binaries instead of the 18.04 ones. OpenSSL 3.0 is now required.
-- **Breaking change**: Updated the MongoDB C# driver to 2.28.0, [which now uses strong-named assemblies](https://www.mongodb.com/community/forums/t/net-driver-2-28-0-released/289745).
-- Added support for MongoDB 8.0.
-- Introduced data directory management to delete old data directories automatically.
-- Use direct connection in replica set connection strings.
-- Fixed the spelling issue in `MongoRunnerOptions.StandardOutputLogger`.
+See the [GitHub releases](https://github.com/asimmon/ephemeral-mongo/releases).
