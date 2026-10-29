@@ -1,0 +1,76 @@
+name: Pack and publish
+
+# Shared by the CI and release workflows, so that every push to main goes through the exact same packaging and publishing steps as a release
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version of the packages, computed by GitVersion from the git history when empty
+        type: string
+        default: ""
+    secrets:
+      NUGET_SOURCE:
+        required: true
+      NUGET_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Packages are built from scratch, without any cache, since tests already ran in the CI workflow for this exact commit
+  pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+
+      - run: ./build.ps1 -SkipTests -Version "$env:PACKAGE_VERSION"
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+
+      - name: Verify package versions
+        if: inputs.version != ''
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          for package_id in EphemeralMongo EphemeralMongo.v2; do
+            if [ ! -f ".output/$package_id.$PACKAGE_VERSION.nupkg" ]; then
+              echo "::error::Package $package_id $PACKAGE_VERSION was not found in the build output."
+              exit 1
+            fi
+          done
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: .output/*.nupkg
+          # The output directory starts with a dot, which upload-artifact considers hidden
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+
+  # The API key is only exposed to this job, which doesn't check out, build or run any code from the repository
+  publish:
+    needs: pack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: packages
+
+      # Packages that already exist are skipped, so a run that failed after pushing some of them can be re-run
+      - name: Push packages
+        shell: bash
+        run: dotnet nuget push "packages/*.nupkg" --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY" --skip-duplicate
+        env:
+          NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
