@@ -103,7 +103,11 @@ var options = new MongoRunnerOptions
 
     // Delay before checking for a new version of the MongoDB server and tools,
     // which is also how long the downloaded release information is cached. Default is 1 day.
-    NewVersionCheckTimeout = TimeSpan.FromDays(2)
+    NewVersionCheckTimeout = TimeSpan.FromDays(2),
+
+    // On Linux, the MongoDB processes are killed when your process exits, even if it crashes or is killed.
+    // Set to false if this causes the MongoDB processes to fail. Default is true.
+    KillMongoProcessesWhenCurrentProcessExits = true
 };
 ```
 
@@ -138,6 +142,10 @@ using (var runner = await MongoRunner.RunAsync(options))
 * `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process. Unless `MongoPort` is set, it uses a random available port, and retries with another one if that port was taken in the meantime.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
 * By default, a unique temporary data directory is used and deleted when the `runner` is disposed. Leftover data directories older than `DataDirectoryLifetime` are deleted on later runs.
+* MongoDB processes are killed when your process exits, even if it crashes or is killed, so they don't keep running after an interrupted test run:
+  * Windows: with a job object, except on .NET Framework.
+  * Linux: with [`ProcessStartInfo.KillOnParentExit`](https://github.com/dotnet/runtime/pull/127112) on .NET 11 and later. On earlier versions, the same mechanism is used by starting them through `setpriv --pdeathsig` from util-linux 2.33 or later, if available. Disable it with `KillMongoProcessesWhenCurrentProcessExits`.
+  * macOS: not supported, as there is no equivalent mechanism.
 
 ## Faster mongod instances for tests
 
@@ -226,6 +234,7 @@ As the pool is experimental, using it produces the `EMEX0001` diagnostic. Suppre
 
 * When `mongod` fails to start, an `EphemeralMongoException` is thrown with the full process path, its arguments, and the errors logged by `mongod`.
 * When `mongoimport` or `mongoexport` fails, an `EphemeralMongoException` is thrown with the command line and the tool's output.
+* On Linux, when a MongoDB process fails in a way that might be caused by killing it when your process exits, the exception message says so. Set `KillMongoProcessesWhenCurrentProcessExits` to `false` to rule it out.
 * `StandardErrorLogger` also receives the library's own warnings, such as when retrying with another port or using outdated release information that couldn't be downloaded again.
 
 ## Changelog

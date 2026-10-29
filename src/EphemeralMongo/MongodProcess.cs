@@ -127,15 +127,16 @@ internal sealed class MongodProcess : BaseMongoProcess
         var processDescription = this.ProcessDescription;
         var startupErrors = this._startupErrors.ToString();
         var startupErrorsMessage = string.IsNullOrWhiteSpace(startupErrors) ? string.Empty : $" Output: {startupErrors}";
+        var troubleshootingMessage = this.GetKillOnParentExitTroubleshootingMessage(startupErrors);
 
         var message = exitCode switch
         {
-            0 => $"The MongoDB process '{processDescription}' exited unexpectedly.{startupErrorsMessage}",
+            0 => $"The MongoDB process '{processDescription}' exited unexpectedly.{troubleshootingMessage}{startupErrorsMessage}",
 
             // Happens on Windows for MongoDB Enterprise edition when sasl2.dll is missing
             STATUS_DLL_NOT_FOUND => $"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}. This is likely due to a missing DLL.{startupErrorsMessage}",
 
-            _ => $"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}.{startupErrorsMessage}"
+            _ => $"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}.{troubleshootingMessage}{startupErrorsMessage}"
         };
 
         return EphemeralMongoException.FromProcessExit(message, exitCode);

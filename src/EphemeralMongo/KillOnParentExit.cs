@@ -25,6 +25,7 @@ namespace EphemeralMongo;
 // the shell detects this by checking that the child process hasn't been reparented (to init or a subreaper) before executing the MongoDB process.
 //
 // On .NET 11 and later, the runtime implementation is used instead. On Windows, we rely on a job object, see NativeMethods.
+// Users can opt out with MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits, and failure messages tell them how when this might be the cause.
 // On macOS, there is no equivalent and the .NET team decided against a best-effort implementation, see: https://github.com/dotnet/runtime/issues/101985
 internal static class KillOnParentExit
 {
@@ -37,16 +38,30 @@ internal static class KillOnParentExit
     // https://man7.org/linux/man-pages/man3/errno.3.html
     private const int ENOENT = 2;
 
+    // On Unix, .NET reports the exit code of a process terminated by a signal as 128 + the signal number
+    private const int SigkillExitCode = 128 + 9;
+
     private const int SetprivProbeTimeoutMs = 10_000;
+
+    private const string DisableHint = "MongoDB processes are started in a way that kills them when the current process exits, which might be related to this failure. " +
+        "If so, disable this behavior with 'MongoRunnerOptions." + nameof(MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits) + " = false'.";
 
     private static readonly PropertyInfo? RuntimeKillOnParentExitProperty = typeof(ProcessStartInfo).GetProperty("KillOnParentExit", typeof(bool));
     private static readonly Lazy<KillOnParentExitMode> LazyMode = new Lazy<KillOnParentExitMode>(GetMode);
     private static readonly Lazy<BlockingCollection<StartRequest>> LazyStartRequests = new Lazy<BlockingCollection<StartRequest>>(StartForkThread);
 
+    // The mode available on the current platform, regardless of the user options
     internal static KillOnParentExitMode Mode => LazyMode.Value;
 
-    public static void Configure(ProcessStartInfo processStartInfo)
+    // Returns the mode applied to the process start info, which must be passed to Start
+    public static KillOnParentExitMode Configure(ProcessStartInfo processStartInfo, bool enabled)
     {
+        if (!enabled)
+        {
+            // Don't even probe setpriv, so users can opt out if the probe itself causes problems
+            return KillOnParentExitMode.None;
+        }
+
         switch (Mode)
         {
             case KillOnParentExitMode.Runtime:
@@ -63,11 +78,13 @@ internal static class KillOnParentExit
                 processStartInfo.FileName = SetprivFileName;
                 break;
         }
+
+        return Mode;
     }
 
-    public static void Start(Process process, string executablePath)
+    public static void Start(Process process, string executablePath, KillOnParentExitMode mode)
     {
-        if (Mode != KillOnParentExitMode.Setpriv)
+        if (mode != KillOnParentExitMode.Setpriv)
         {
             process.Start();
             return;
@@ -86,7 +103,44 @@ internal static class KillOnParentExit
 
         request.Completed.Wait();
         request.Completed.Dispose();
-        request.Exception?.Throw();
+
+        if (request.Exception != null)
+        {
+            // We already checked that the MongoDB executable exists, so setpriv itself couldn't be started
+            throw new EphemeralMongoException($"An error occurred trying to start process '{executablePath}' through '{SetprivFileName}'. {DisableHint}", request.Exception.SourceException);
+        }
+    }
+
+    // Returns a message explaining how to disable this feature when a MongoDB process failure might be caused by it, or an empty string otherwise
+    public static string GetTroubleshootingMessage(KillOnParentExitMode mode, int exitCode, string output)
+    {
+        if (mode == KillOnParentExitMode.None)
+        {
+            return string.Empty;
+        }
+
+        // The MongoDB process was killed by the parent death signal (or by something else, like the OOM killer),
+        // or setpriv or the shell failed before executing the MongoDB process, in which case they print their errors with their name as a prefix
+        var mightBeRelated = exitCode == SigkillExitCode || (mode == KillOnParentExitMode.Setpriv && HasSetprivOrShellError(output));
+
+        return mightBeRelated ? " " + DisableHint : string.Empty;
+    }
+
+    private static bool HasSetprivOrShellError(string output)
+    {
+        using var reader = new StringReader(output);
+
+        while (reader.ReadLine() is { } line)
+        {
+            line = line.TrimStart();
+
+            if (line.StartsWith(SetprivFileName + ":", StringComparison.Ordinal) || line.StartsWith("sh:", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static KillOnParentExitMode GetMode()

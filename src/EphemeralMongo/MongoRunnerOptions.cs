@@ -43,6 +43,7 @@ public sealed class MongoRunnerOptions
         this.UseSingleNodeReplicaSet = options.UseSingleNodeReplicaSet;
         this.StandardOutputLogger = options.StandardOutputLogger;
         this.StandardErrorLogger = options.StandardErrorLogger;
+        this.KillMongoProcessesWhenCurrentProcessExits = options.KillMongoProcessesWhenCurrentProcessExits;
         this.ReplicaSetName = options.ReplicaSetName;
         this.RootDataDirectoryPath = options.RootDataDirectoryPath;
     }
@@ -171,6 +172,16 @@ public sealed class MongoRunnerOptions
         get => this._newVersionCheckTimeout;
         set => this._newVersionCheckTimeout = value >= TimeSpan.Zero ? value : throw new ArgumentOutOfRangeException(nameof(this.NewVersionCheckTimeout));
     }
+
+    /// <summary>
+    /// Whether the operating system kills the MongoDB processes when the current process exits on Linux, even if it crashes or is killed.
+    /// On .NET 10 and earlier, this relies on <c>setpriv</c> from util-linux and does nothing when it is not available.
+    /// Disable it if it causes MongoDB processes to fail. Default is <c>true</c>.
+    /// </summary>
+    /// <remarks>
+    /// On Windows, MongoDB processes are always killed when the current process exits, except on .NET Framework. This is not supported on macOS.
+    /// </remarks>
+    public bool KillMongoProcessesWhenCurrentProcessExits { get; set; } = true;
 
     // Internal properties start here
     internal string ReplicaSetName { get; set; } = "singleNodeReplSet";

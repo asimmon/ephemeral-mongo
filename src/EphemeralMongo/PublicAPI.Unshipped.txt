@@ -6,3 +6,5 @@
 [EMEX0001]EphemeralMongo.MongoRunnerPool.RentAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EphemeralMongo.IMongoRunner!>!
 [EMEX0001]EphemeralMongo.MongoRunnerPool.Return(EphemeralMongo.IMongoRunner! runner) -> void
 EphemeralMongo.MongoVersion.V9 = 9 -> EphemeralMongo.MongoVersion
+EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.get -> bool
+EphemeralMongo.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.set -> void

@@ -65,8 +65,9 @@ internal sealed class MongoImportExportProcess : BaseMongoProcess
         }
 
         var outputMessage = string.IsNullOrWhiteSpace(output) ? string.Empty : $" Output: {output}";
+        var troubleshootingMessage = this.GetKillOnParentExitTroubleshootingMessage(output);
 
-        return new EphemeralMongoException($"The MongoDB process '{processDescription}' failed with exit code {exitCode}.{outputMessage}");
+        return new EphemeralMongoException($"The MongoDB process '{processDescription}' failed with exit code {exitCode}.{troubleshootingMessage}{outputMessage}");
     }
 
     private void OnDataReceivedCaptureOutput(object sender, DataReceivedEventArgs args)
