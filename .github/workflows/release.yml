@@ -93,18 +93,43 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Creating the tag first fails if it already exists, whereas creating the release would silently reuse it
-      - name: Create the tag and GitHub release
+      # The packages pushed to NuGet are also attached to the GitHub release
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: packages
+
+      # An existing tag is only reused when it points to the released commit, so this job can be re-run if creating the release failed
+      - name: Create the tag
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$VERSION" -f sha="$GITHUB_SHA" --silent
-
-          prerelease=()
-          if [[ "$VERSION" == *-* ]]; then
-            prerelease=(--prerelease)
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$VERSION" --jq ".[] | select(.ref == \"refs/tags/$VERSION\") | .object.sha")
+          if [ -z "$tag_sha" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$VERSION" -f sha="$GITHUB_SHA" --silent
+          elif [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag $VERSION already exists on $tag_sha instead of $GITHUB_SHA."
+            exit 1
           fi
 
-          gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$VERSION" --generate-notes "${prerelease[@]}"
+      # Release notes list the pull requests merged since the previous release.
+      # A stable release starts from the previous stable release, so that its notes also cover the changes of its previews.
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          options=()
+          if [[ "$VERSION" == *-* ]]; then
+            options=(--prerelease)
+          else
+            previous=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
+            if [ -n "$previous" ]; then
+              options=(--notes-start-tag "$previous")
+            fi
+          fi
+
+          gh release create "$VERSION" packages/*.nupkg --repo "$GITHUB_REPOSITORY" --verify-tag --title "$VERSION" --generate-notes "${options[@]}"
