@@ -7,7 +7,7 @@ internal sealed class FileLock : IDisposable
     private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(100);
 
     // Generous enough to cover another process downloading and extracting large archives on a slow connection
-    private static readonly TimeSpan MaxWaitTime = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan DefaultMaxWaitTime = TimeSpan.FromMinutes(10);
 
     private readonly FileStream _stream;
 
@@ -16,7 +16,12 @@ internal sealed class FileLock : IDisposable
         this._stream = stream;
     }
 
-    public static async Task<FileLock> AcquireAsync(string lockFilePath, CancellationToken cancellationToken)
+    public static Task<FileLock> AcquireAsync(string lockFilePath, CancellationToken cancellationToken)
+    {
+        return AcquireAsync(lockFilePath, DefaultMaxWaitTime, cancellationToken);
+    }
+
+    public static async Task<FileLock> AcquireAsync(string lockFilePath, TimeSpan maxWaitTime, CancellationToken cancellationToken)
     {
         var startedAtUtc = DateTime.UtcNow;
 
@@ -29,9 +34,9 @@ internal sealed class FileLock : IDisposable
             }
             catch (IOException ex)
             {
-                if (DateTime.UtcNow - startedAtUtc > MaxWaitTime)
+                if (DateTime.UtcNow - startedAtUtc > maxWaitTime)
                 {
-                    throw new EphemeralMongoException($"Could not acquire the lock file {lockFilePath} within {MaxWaitTime.TotalMinutes} minutes. Another process might be stuck while holding it.", ex);
+                    throw new EphemeralMongoException($"Could not acquire the lock file {lockFilePath} within {maxWaitTime.TotalSeconds} seconds. Another process might be stuck while holding it.", ex);
                 }
 
                 await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);

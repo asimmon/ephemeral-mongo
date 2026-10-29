@@ -98,7 +98,8 @@ var options = new MongoRunnerOptions
     // Useful when behind a proxy or firewall. Default is a shared reusable instance.
     Transport = new HttpTransport(new HttpClient()),
 
-    // Delay before checking for a new version of the MongoDB server. Default is 1 day.
+    // Delay before checking for a new version of the MongoDB server and tools,
+    // which is also how long the downloaded release information is cached. Default is 1 day.
     NewVersionCheckTimeout = TimeSpan.FromDays(2)
 };
 ```
@@ -124,6 +125,7 @@ using (await var runner = MongoRunner.RunAsync(options))
 
 * At runtime, the MongoDB binaries (`mongod`, `mongoimport`, and `mongoexport`) are downloaded when needed (if not already present) and extracted to your local application data directory.
 * Official download links are retrieved from [this JSON file](https://downloads.mongodb.org/current.json) for the server and [this JSON file](https://downloads.mongodb.org/tools/db/release.json) for the tools.
+* These JSON files are cached in the same directory for `NewVersionCheckTimeout` and shared by all processes, so parallel test runs request them only once. If they can't be downloaded again, the outdated cached copy is used.
 * SHA256 checksums are used to verify the integrity of the downloaded files.
 * `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process with a random available port.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
