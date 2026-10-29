@@ -21,12 +21,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "Eph
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.LatestDriver.Tests", "EphemeralMongo.LatestDriver.Tests\EphemeralMongo.LatestDriver.Tests.csproj", "{53F65B0A-83EB-43CD-B37B-4EEEBB007FCC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.OrphanTestHost", "EphemeralMongo.OrphanTestHost\EphemeralMongo.OrphanTestHost.csproj", "{42128EC0-B7A6-492B-99B7-301DF06FD989}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{42128EC0-B7A6-492B-99B7-301DF06FD989}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42128EC0-B7A6-492B-99B7-301DF06FD989}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42128EC0-B7A6-492B-99B7-301DF06FD989}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42128EC0-B7A6-492B-99B7-301DF06FD989}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F33F8D0A-B3F1-4471-8DD7-937CFAC005E5}.Release|Any CPU.ActiveCfg = Release|Any CPU

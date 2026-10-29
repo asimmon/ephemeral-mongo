@@ -77,6 +77,7 @@ internal sealed class MongodProcess : BaseMongoProcess
         try
         {
             await this.Process.StartProcessWithRetryAsync(cancellationToken).ConfigureAwait(false);
+            this.OnMongodProcessStarted();
 
             this.Process.BeginOutputReadLine();
             this.Process.BeginErrorReadLine();
