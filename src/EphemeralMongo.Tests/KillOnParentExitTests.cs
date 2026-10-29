@@ -79,7 +79,7 @@ public class KillOnParentExitTests
     }
 
     [Fact]
-    public void Configure_Ignores_Disabled_Option_Except_On_Linux()
+    public void Configure_Does_Nothing_When_Disabled()
     {
         var processStartInfo = new ProcessStartInfo
         {
@@ -89,15 +89,13 @@ public class KillOnParentExitTests
 
         var strategy = KillOnParentExit.Configure(processStartInfo, enabled: false);
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        Assert.Same(NoKillOnParentExitStrategy.Instance, strategy);
+        Assert.Equal("/path/to/mongod", processStartInfo.FileName);
+        Assert.Equal("--port 27017", processStartInfo.Arguments);
+
+        if (typeof(ProcessStartInfo).GetProperty("KillOnParentExit") is { } property)
         {
-            Assert.Same(NoKillOnParentExitStrategy.Instance, strategy);
-            Assert.Equal("/path/to/mongod", processStartInfo.FileName);
-            Assert.Equal("--port 27017", processStartInfo.Arguments);
-        }
-        else
-        {
-            Assert.Same(KillOnParentExit.Strategy, strategy);
+            Assert.False((bool)property.GetValue(processStartInfo)!);
         }
     }
 

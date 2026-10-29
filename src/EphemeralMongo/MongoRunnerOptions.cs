@@ -174,12 +174,13 @@ public sealed class MongoRunnerOptions
     }
 
     /// <summary>
-    /// Whether the operating system kills the MongoDB processes when the current process exits on Linux, even if it crashes or is killed.
-    /// On .NET 10 and earlier, this relies on <c>setpriv</c> from util-linux and does nothing when it is not available.
+    /// Whether the operating system kills the MongoDB processes when the current process exits, even if it crashes or is killed.
     /// Disable it if it causes MongoDB processes to fail. Default is <c>true</c>.
     /// </summary>
     /// <remarks>
-    /// On Windows, MongoDB processes are always killed when the current process exits, except on .NET Framework. This is not supported on macOS.
+    /// This is not supported on macOS and .NET Framework. On Linux with .NET 10 and earlier, this relies on <c>setpriv</c> from util-linux and does nothing when it is not available.
+    /// On Windows with .NET 10 and earlier, the current process is assigned to a job object, so once a runner enables it,
+    /// it applies to all MongoDB processes started afterward by the current process.
     /// </remarks>
     public bool KillMongoProcessesWhenCurrentProcessExits { get; set; } = true;
 

@@ -24,8 +24,7 @@ internal sealed class RuntimeKillOnParentExitStrategy(PropertyInfo killOnParentE
 
     public string GetTroubleshootingMessage(int exitCode, string output)
     {
-        // On Linux, the MongoDB process might have been killed by the parent death signal (or by something else, like the OOM killer).
-        // Users can only opt out on Linux.
+        // On Linux, the MongoDB process might have been killed by the parent death signal (or by something else, like the OOM killer)
         var mightBeRelated = exitCode == SigkillExitCode && RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
         return mightBeRelated ? " " + KillOnParentExit.DisableHint : string.Empty;

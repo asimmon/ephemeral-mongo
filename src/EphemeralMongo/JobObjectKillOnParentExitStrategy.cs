@@ -16,6 +16,9 @@ namespace EphemeralMongo;
 // Operations performed on a job object affect all processes associated with the job object.
 // Examples include [...] or terminating all processes associated with a job."
 // See: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
+//
+// The current process is assigned to the job object, which can't be undone. So once a runner enables this behavior,
+// all MongoDB processes started afterward by the current process are killed when it exits, even by runners that disabled it.
 [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This strategy is only used on Windows")]
 internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrategy
 {
@@ -24,7 +27,14 @@ internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrat
 
     public void Configure(ProcessStartInfo processStartInfo)
     {
-        CreateSingletonJobObject();
+        try
+        {
+            CreateSingletonJobObject();
+        }
+        catch (Win32Exception ex)
+        {
+            throw new EphemeralMongoException($"An error occurred trying to assign the current process to a job object. {KillOnParentExit.DisableHint}", ex);
+        }
     }
 
     public void Start(Process process, string executablePath)

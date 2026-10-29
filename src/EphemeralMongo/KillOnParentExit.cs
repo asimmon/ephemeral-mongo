@@ -12,8 +12,7 @@ namespace EphemeralMongo;
 // - Linux: a port of the .NET 11 implementation, see SetprivKillOnParentExitStrategy
 // - macOS: there is no equivalent and the .NET team decided against a best-effort implementation, see: https://github.com/dotnet/runtime/issues/101985
 //
-// On Linux, the implementation depends on the system (setpriv, process reparenting, etc.), so users can opt out with
-// MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits, and failure messages tell them how when this might be the cause.
+// Users can opt out with MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits, and failure messages tell them how when this might be the cause.
 internal static class KillOnParentExit
 {
     internal const string DisableHint = "MongoDB processes are started in a way that kills them when the current process exits, which might be related to this failure. " +
@@ -27,8 +26,8 @@ internal static class KillOnParentExit
     // Configures the process start info and returns the strategy that must be used to start the process
     public static IKillOnParentExitStrategy Configure(ProcessStartInfo processStartInfo, bool enabled)
     {
-        // The option is an escape hatch for Linux only. When disabled, the strategy isn't even created, so setpriv isn't probed.
-        var strategy = enabled || !IsLinux() ? Strategy : NoKillOnParentExitStrategy.Instance;
+        // When disabled, the strategy isn't even created, so setpriv isn't probed and the Windows job object isn't created
+        var strategy = enabled ? Strategy : NoKillOnParentExitStrategy.Instance;
 
         strategy.Configure(processStartInfo);
 
