@@ -17,6 +17,8 @@
     <Using Include="Xunit" />
 
     <Compile Include="..\EphemeralMongo.Tests\*.cs" />
+    <!-- Orphan protection is shared source; its tests need the OrphanTestHost, which references the v3 assembly of the same name -->
+    <Compile Remove="..\EphemeralMongo.Tests\OrphanProtectionTests.cs" />
 
     <Content Include="..\EphemeralMongo.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

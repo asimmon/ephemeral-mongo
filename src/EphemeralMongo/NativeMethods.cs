@@ -35,7 +35,7 @@ internal static class NativeMethods
 
     // This way of detecting if running on .NET Framework is also used in .NET runtime tests, see:
     // https://github.com/dotnet/runtime/blob/v6.0.0/src/libraries/Common/tests/TestUtilities/System/PlatformDetection.Windows.cs#L21
-    private static bool IsNetFramework() => RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
+    internal static bool IsNetFramework() => RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
 
     private static unsafe void CreateSingletonJobObject()
     {

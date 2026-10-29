@@ -138,6 +138,7 @@ using (var runner = await MongoRunner.RunAsync(options))
 * `MongoRunner.Run` or `MongoRunner.RunAsync` always starts a new `mongod` process. Unless `MongoPort` is set, it uses a random available port, and retries with another one if that port was taken in the meantime.
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
 * By default, a unique temporary data directory is used and deleted when the `runner` is disposed. Leftover data directories older than `DataDirectoryLifetime` are deleted on later runs.
+* `mongod` does not outlive your process, even when it is killed without disposing the `runner` (SIGKILL, a test timeout, a cancelled CI run). Windows relies on a job object. Linux and macOS use a small `/bin/sh` guardian that reads a pipe held open by your process: when the process dies, the pipe closes and the guardian stops `mongod` and removes its data directory.
 
 ## Faster mongod instances for tests
 
