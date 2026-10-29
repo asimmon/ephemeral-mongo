@@ -10,7 +10,8 @@ namespace EphemeralMongo;
 // We target older frameworks, so the property is discovered at runtime. On older runtimes, we use our own implementations:
 // - Windows: the current process is assigned to a job object, see JobObjectKillOnParentExitStrategy
 // - Linux: a port of the .NET 11 implementation, see SetprivKillOnParentExitStrategy
-// - macOS: there is no equivalent and the .NET team decided against a best-effort implementation, see: https://github.com/dotnet/runtime/issues/101985
+// - macOS, and Linux without setpriv: a shell started once that kills the MongoDB processes when the current process exits, see WatchdogKillOnParentExitStrategy.
+//   There is no equivalent on macOS and the .NET team decided against a best-effort implementation, see: https://github.com/dotnet/runtime/issues/101985
 //
 // Users can opt out with MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits, and failure messages tell them how when this might be the cause.
 internal static class KillOnParentExit
@@ -21,7 +22,10 @@ internal static class KillOnParentExit
     private static readonly Lazy<IKillOnParentExitStrategy> LazyStrategy = new Lazy<IKillOnParentExitStrategy>(CreateStrategy);
 
     // The strategy available on the current platform, regardless of the user options
-    internal static IKillOnParentExitStrategy Strategy => LazyStrategy.Value;
+    internal static IKillOnParentExitStrategy Strategy => StrategyOverride ?? LazyStrategy.Value;
+
+    // Lets end-to-end tests use another strategy than the one available on the current platform, like the watchdog on Linux with setpriv
+    internal static IKillOnParentExitStrategy? StrategyOverride { get; set; }
 
     // Configures the process start info and returns the strategy that must be used to start the process
     public static IKillOnParentExitStrategy Configure(ProcessStartInfo processStartInfo, bool enabled)
@@ -54,12 +58,19 @@ internal static class KillOnParentExit
             return new SetprivKillOnParentExitStrategy();
         }
 
+        if (IsLinux() || IsMacOS())
+        {
+            return new WatchdogKillOnParentExitStrategy();
+        }
+
         return NoKillOnParentExitStrategy.Instance;
     }
 
     private static bool IsWindows() => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     private static bool IsLinux() => RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+    private static bool IsMacOS() => RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
     // This way of detecting if running on .NET Framework is also used in .NET runtime tests, see:
     // https://github.com/dotnet/runtime/blob/v6.0.0/src/libraries/Common/tests/TestUtilities/System/PlatformDetection.Windows.cs#L21

@@ -144,8 +144,8 @@ using (var runner = await MongoRunner.RunAsync(options))
 * By default, a unique temporary data directory is used and deleted when the `runner` is disposed. Leftover data directories older than `DataDirectoryLifetime` are deleted on later runs.
 * MongoDB processes are killed when your process exits, even if it crashes or is killed, so they don't keep running after an interrupted test run. Disable it with `KillMongoProcessesWhenCurrentProcessExits`:
   * Windows: with [`ProcessStartInfo.KillOnParentExit`](https://devblogs.microsoft.com/dotnet/process-api-improvements-in-dotnet-11/) on .NET 11 and later. On earlier versions, your process is assigned to a job object, except on .NET Framework. Once a runner enables it, it applies to all MongoDB processes started afterward by your process.
-  * Linux: with `ProcessStartInfo.KillOnParentExit` on .NET 11 and later. On earlier versions, the same mechanism is used by starting them through `setpriv --pdeathsig` from util-linux 2.33 or later, if available.
-  * macOS: not supported, as there is no equivalent mechanism.
+  * Linux: with `ProcessStartInfo.KillOnParentExit` on .NET 11 and later. On earlier versions, the same mechanism is used by starting them through `setpriv --pdeathsig` from util-linux 2.33 or later, if available, and otherwise the same way as on macOS.
+  * macOS: a `/bin/sh` process started once receives the ID of each MongoDB process, and kills the remaining ones when your process exits and closes its standard input. It ignores `SIGINT`, `SIGTERM` and `SIGHUP`, so it survives Ctrl+C.
 
 ## Faster mongod instances for tests
 

@@ -36,12 +36,12 @@ public class KillOnParentExitTests
             else
             {
                 // setpriv might not be available, see SetprivKillOnParentExitStrategy.IsAvailable
-                Assert.True(strategy is SetprivKillOnParentExitStrategy or NoKillOnParentExitStrategy);
+                Assert.True(strategy is SetprivKillOnParentExitStrategy or WatchdogKillOnParentExitStrategy);
             }
         }
         else
         {
-            Assert.IsType<NoKillOnParentExitStrategy>(strategy);
+            Assert.IsType<WatchdogKillOnParentExitStrategy>(strategy);
         }
     }
 
@@ -117,6 +117,9 @@ public class KillOnParentExitTests
     [InlineData("Setpriv", 137, "", true)]
     [InlineData("Setpriv", 1, "{\"t\":{\"$date\":\"2026-10-29T00:00:00.000Z\"},\"s\":\"E\",\"msg\":\"Address already in use\"}", false)]
     [InlineData("Runtime", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
+    [InlineData("Watchdog", 137, "", true)]
+    [InlineData("Watchdog", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
+    [InlineData("Watchdog", 0, "", false)]
     public void GetTroubleshootingMessage_Explains_How_To_Disable_The_Feature_When_It_Might_Be_Related(string strategyName, int exitCode, string output, bool expectHint)
     {
         var message = CreateStrategy(strategyName).GetTroubleshootingMessage(exitCode, output);
@@ -174,11 +177,184 @@ public class KillOnParentExitTests
         }
     }
 
+    [Fact]
+    public void Watchdog_Kills_Started_Processes_When_Current_Process_Exits()
+    {
+        SkipOnWindows();
+
+        using var exitedProcess = CreateShellProcess("exit 0");
+        using var sleepingProcess1 = CreateShellProcess("exec sleep 30");
+        using var sleepingProcess2 = CreateShellProcess("exec sleep 30");
+        using var unrelatedProcess = CreateShellProcess("exec sleep 30");
+
+        try
+        {
+            using (var strategy = new WatchdogKillOnParentExitStrategy())
+            {
+                strategy.Start(exitedProcess, "/bin/sh");
+                Assert.True(exitedProcess.WaitForExit(milliseconds: 5000));
+
+                strategy.Start(sleepingProcess1, "/bin/sh");
+                strategy.Start(sleepingProcess2, "/bin/sh");
+                unrelatedProcess.Start();
+
+                // Nothing is killed while the current process is alive
+                Assert.False(sleepingProcess1.WaitForExit(milliseconds: 500));
+
+                // Disposing the strategy closes the standard input of the watchdog, like the operating system does when the current process exits
+            }
+
+            AssertKilled(sleepingProcess1);
+            AssertKilled(sleepingProcess2);
+            Assert.False(unrelatedProcess.HasExited);
+            Assert.Equal(0, exitedProcess.ExitCode);
+        }
+        finally
+        {
+            TryKill(sleepingProcess1, sleepingProcess2, unrelatedProcess);
+        }
+    }
+
+    [Fact]
+    public void Watchdog_Forgets_Processes_Prefixed_With_A_Dash_And_Ignores_Invalid_Lines()
+    {
+        SkipOnWindows();
+
+        using var forgottenProcess = CreateShellProcess("exec sleep 30");
+        using var killedProcess = CreateShellProcess("exec sleep 30");
+        using var exitedProcess = CreateShellProcess("exit 0");
+
+        try
+        {
+            forgottenProcess.Start();
+            killedProcess.Start();
+            exitedProcess.Start();
+            exitedProcess.WaitForExit();
+
+            RunWatchdog(
+                $"{forgottenProcess.Id}",
+                $"{killedProcess.Id}",
+                $"{killedProcess.Id}",
+                $"-{forgottenProcess.Id}",
+                $"{exitedProcess.Id}",
+                string.Empty,
+                "-",
+                "--1",
+                "0",
+                "abc",
+                $"{killedProcess.Id}abc",
+                "$(exit 1)",
+                $"-{killedProcess.Id}x");
+
+            AssertKilled(killedProcess);
+            Assert.False(forgottenProcess.HasExited);
+        }
+        finally
+        {
+            TryKill(forgottenProcess, killedProcess);
+        }
+    }
+
+    [Theory]
+    [InlineData("INT")]
+    [InlineData("TERM")]
+    [InlineData("HUP")]
+    [InlineData("QUIT")]
+    public void Watchdog_Ignores_Termination_Signals(string signal)
+    {
+        SkipOnWindows();
+
+        using var sleepingProcess = CreateShellProcess("exec sleep 30");
+
+        try
+        {
+            sleepingProcess.Start();
+
+            using var watchdog = Process.Start(WatchdogKillOnParentExitStrategy.CreateWatchdogStartInfo())!;
+            watchdog.StandardInput.Write($"{sleepingProcess.Id}\n");
+            watchdog.StandardInput.Flush();
+
+            // Pressing Ctrl+C in a terminal sends SIGINT to the whole process group, including the watchdog
+            using (var kill = Process.Start("kill", $"-{signal} {watchdog.Id}")!)
+            {
+                kill.WaitForExit();
+                Assert.Equal(0, kill.ExitCode);
+            }
+
+            Assert.False(watchdog.WaitForExit(milliseconds: 500));
+
+            watchdog.StandardInput.Close();
+            Assert.True(watchdog.WaitForExit(milliseconds: 5000));
+
+            AssertKilled(sleepingProcess);
+        }
+        finally
+        {
+            TryKill(sleepingProcess);
+        }
+    }
+
+    private static void SkipOnWindows()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Assert.Skip("The watchdog is only used on Linux and macOS");
+        }
+    }
+
+    private static Process CreateShellProcess(string script) => new Process
+    {
+        StartInfo = new ProcessStartInfo
+        {
+            FileName = "/bin/sh",
+            Arguments = $"-c \"{script}\"",
+            UseShellExecute = false,
+        },
+    };
+
+    // Writes the lines to a new watchdog, then closes its standard input and waits for it to exit
+    private static void RunWatchdog(params string[] lines)
+    {
+        using var watchdog = Process.Start(WatchdogKillOnParentExitStrategy.CreateWatchdogStartInfo())!;
+
+        foreach (var line in lines)
+        {
+            watchdog.StandardInput.Write(line + "\n");
+        }
+
+        watchdog.StandardInput.Close();
+
+        Assert.True(watchdog.WaitForExit(milliseconds: 5000));
+        Assert.Equal(0, watchdog.ExitCode);
+    }
+
+    private static void AssertKilled(Process process)
+    {
+        Assert.True(process.WaitForExit(milliseconds: 5000));
+        Assert.Equal(RuntimeKillOnParentExitStrategy.SigkillExitCode, process.ExitCode);
+    }
+
+    private static void TryKill(params Process[] processes)
+    {
+        foreach (var process in processes)
+        {
+            try
+            {
+                process.Kill();
+            }
+            catch
+            {
+                // The process might have already exited or might not have been started
+            }
+        }
+    }
+
     private static IKillOnParentExitStrategy CreateStrategy(string strategyName) => strategyName switch
     {
         "None" => NoKillOnParentExitStrategy.Instance,
         "JobObject" => new JobObjectKillOnParentExitStrategy(),
         "Setpriv" => new SetprivKillOnParentExitStrategy(),
+        "Watchdog" => new WatchdogKillOnParentExitStrategy(),
 
         // The property is only used when configuring a process start info, which isn't the case here
         "Runtime" => new RuntimeKillOnParentExitStrategy(typeof(ProcessStartInfo).GetProperty(nameof(ProcessStartInfo.UseShellExecute))!),

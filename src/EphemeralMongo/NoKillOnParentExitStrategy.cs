@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace EphemeralMongo;
 
-// Used on macOS, on .NET Framework, when setpriv isn't available on Linux, or when the user opted out
+// Used on .NET Framework, on platforms other than Windows, Linux and macOS, or when the user opted out
 internal sealed class NoKillOnParentExitStrategy : IKillOnParentExitStrategy
 {
     public static readonly NoKillOnParentExitStrategy Instance = new NoKillOnParentExitStrategy();
