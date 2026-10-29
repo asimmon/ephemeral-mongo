@@ -25,7 +25,7 @@ public sealed class MongoRunner
     private IMongoProcess? _process;
     private string? _dataDirectory;
 
-    private MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
+    internal MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
     {
         this._fileSystem = fileSystem;
         this._timeProvider = timeProvider;
@@ -161,7 +161,7 @@ public sealed class MongoRunner
 
     private static int _ongoingRootDataDirectoryCleanupCount;
 
-    private void CleanupOldDataDirectories()
+    internal void CleanupOldDataDirectories()
     {
         if (this._options.DataDirectory != null)
         {
@@ -212,6 +212,11 @@ public sealed class MongoRunner
                     }
 
                     this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // Deleted since it was enumerated, most likely by the runner that owned it, so there's nothing left to clean up.
+                    // The creation time of a missing directory is 1601-01-01, which is why it was considered old in the first place.
                 }
                 catch (Exception ex)
                 {
