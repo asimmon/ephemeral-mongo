@@ -32,6 +32,31 @@ internal sealed class FileSystem : IFileSystem
         return Directory.GetCreationTimeUtc(path);
     }
 
+    public bool IsFileLocked(string path)
+    {
+        try
+        {
+            // Opening without sharing fails with a sharing violation on Windows if any other handle is open,
+            // and acquires an exclusive flock() on Unix, which conflicts with the flock() held by a running mongod
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                return false;
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            return false;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
+    }
+
     public void MakeFileExecutable(string path)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

@@ -9,13 +9,11 @@ internal static class MongoExecutableDownloader
     private const string MongoImportExeFileNameWithoutExt = "mongoimport";
     private const string MongoExportExeFileNameWithoutExt = "mongoexport";
     private const string LastCheckFileName = "last-check.txt";
+    private const string LockFileName = "download.lock";
 
     private static readonly string MongodExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongodExeFileNameWithoutExt + ".exe" : MongodExeFileNameWithoutExt;
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
     private static readonly string MongoExportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoExportExeFileNameWithoutExt + ".exe" : MongoExportExeFileNameWithoutExt;
-
-    private static readonly string AppDataDirPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ephemeral-mongo");
-    private static readonly string TmpDirPath = Path.Combine(Path.GetTempPath(), "ephemeral-mongo");
 
     // The epoch for file time is 1/1/1601 12:00:00 AM
     // This value is returned by File.GetLastWriteTimeUtc when the file does not exist
@@ -31,16 +29,18 @@ internal static class MongoExecutableDownloader
         var target = DownloadTargetHelper.GetTarget(options.Version);
 
         var baseExeDirName = string.Format(CultureInfo.InvariantCulture, "{0}-{1}-{2}", MongodExeFileNameWithoutExt, edition, majorVersion);
-        var baseExeDirPath = Path.Combine(AppDataDirPath, "bin", MongodExeFileNameWithoutExt, baseExeDirName);
+        var baseExeDirPath = Path.Combine(AppDataDirectory.RootPath, "bin", MongodExeFileNameWithoutExt, baseExeDirName);
+        AppDataDirectory.EnsureRootExists();
         Directory.CreateDirectory(baseExeDirPath);
 
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
         var lastCheckDateUtc = File.GetLastWriteTimeUtc(lastCheckFilePath);
 
-        var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
+        var skipNewExeVersionCheck = IsLastCheckRecent(lastCheckDateUtc, options.NewVersionCheckTimeout);
         if (skipNewExeVersionCheck)
         {
-            var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath);
+            // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
+            var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath, deleteIfIncomplete: false);
             if (existingExeFilePath != null)
             {
                 return existingExeFilePath;
@@ -51,40 +51,45 @@ internal static class MongoExecutableDownloader
 
         try
         {
+            using var fileLock = await FileLock.AcquireAsync(Path.Combine(baseExeDirPath, LockFileName), cancellationToken).ConfigureAwait(false);
+
             if (skipNewExeVersionCheck)
             {
-                var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath);
+                var existingExeFilePath = FindLatestExistingMongodExeFilePath(baseExeDirPath, deleteIfIncomplete: true);
                 if (existingExeFilePath != null)
                 {
                     return existingExeFilePath;
                 }
             }
 
-            var mongodVersions = await options.Transport.GetFromJsonAsync<MongoVersionsDto>("https://downloads.mongodb.org/current.json", cancellationToken).ConfigureAwait(false);
+            // Shared by all editions and major versions, so it lives in their parent directory
+            var releasesCacheFilePath = Path.Combine(AppDataDirectory.RootPath, "bin", MongodExeFileNameWithoutExt, "current.json");
+            var (mongodVersions, checkedAtUtc) = await ReleaseInformationCache.GetMongodVersionsAsync(options, releasesCacheFilePath, cancellationToken).ConfigureAwait(false);
 
-            var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
+            var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture) + ".", StringComparison.Ordinal))
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB major version {majorVersion}");
 
             var mongodDownload = mongodVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Edition == edition && x.Target == target)
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB architecture {architecture}, edition {edition}, and target {target}");
 
-            var exeDirPath = Path.Combine(baseExeDirPath, mongodVersion.Version);
+            var versionDirName = DownloadReleaseHelper.GetVersionDirectoryName(mongodVersion.Version);
+            var exeDirPath = Path.Combine(baseExeDirPath, versionDirName);
             var exeFilePath = Path.Combine(exeDirPath, MongodExeFileName);
 
             if (File.Exists(exeFilePath))
             {
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return exeFilePath;
             }
 
-            var tmpDirName = $"{MongodExeFileNameWithoutExt}-{edition}-{mongodVersion.Version}-{Path.GetRandomFileName()}";
-            var tmpDownloadDirPath = Path.Combine(TmpDirPath, "downloads", tmpDirName);
-            var tmpUncompressDirPath = Path.Combine(TmpDirPath, "uncompress", tmpDirName);
+            var tmpDirName = $"{MongodExeFileNameWithoutExt}-{edition}-{versionDirName}-{Path.GetRandomFileName()}";
+            var tmpDownloadDirPath = Path.Combine(AppDataDirectory.TmpPath, "downloads", tmpDirName);
+            var tmpUncompressDirPath = Path.Combine(AppDataDirectory.TmpPath, "uncompress", tmpDirName);
 
             Directory.CreateDirectory(tmpDownloadDirPath);
             Directory.CreateDirectory(tmpUncompressDirPath);
 
-            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, Path.GetFileName(mongodDownload.Archive.Url));
+            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, DownloadReleaseHelper.GetArchiveFileName(mongodDownload.Archive.Url));
 
             try
             {
@@ -119,7 +124,7 @@ internal static class MongoExecutableDownloader
                     }
                 }
 
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return exeFilePath;
             }
             finally
@@ -138,16 +143,18 @@ internal static class MongoExecutableDownloader
     {
         const string baseExeDirName = "tools";
 
-        var baseExeDirPath = Path.Combine(AppDataDirPath, "bin", baseExeDirName);
+        var baseExeDirPath = Path.Combine(AppDataDirectory.RootPath, "bin", baseExeDirName);
+        AppDataDirectory.EnsureRootExists();
         Directory.CreateDirectory(baseExeDirPath);
 
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
         var lastCheckDateUtc = File.GetLastWriteTimeUtc(lastCheckFilePath);
 
-        var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
+        var skipNewExeVersionCheck = IsLastCheckRecent(lastCheckDateUtc, options.NewVersionCheckTimeout);
         if (skipNewExeVersionCheck)
         {
-            var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath);
+            // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
+            var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath, deleteIfIncomplete: false);
             if (existingExeFilePath.HasValue)
             {
                 return existingExeFilePath.Value;
@@ -158,9 +165,11 @@ internal static class MongoExecutableDownloader
 
         try
         {
+            using var fileLock = await FileLock.AcquireAsync(Path.Combine(baseExeDirPath, LockFileName), cancellationToken).ConfigureAwait(false);
+
             if (skipNewExeVersionCheck)
             {
-                var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath);
+                var existingExeFilePath = FindLatestExistingToolExeFilePaths(baseExeDirPath, deleteIfIncomplete: true);
                 if (existingExeFilePath.HasValue)
                 {
                     return existingExeFilePath.Value;
@@ -170,7 +179,8 @@ internal static class MongoExecutableDownloader
             var architecture = DownloadArchitectureHelper.GetArchitecture();
             var target = DownloadTargetHelper.GetTarget(options.Version);
 
-            var mongoToolsVersions = await options.Transport.GetFromJsonAsync<ToolsVersionsDto>("https://downloads.mongodb.org/tools/db/release.json", cancellationToken).ConfigureAwait(false);
+            var releasesCacheFilePath = Path.Combine(baseExeDirPath, "release.json");
+            var (mongoToolsVersions, checkedAtUtc) = await ReleaseInformationCache.GetToolsVersionsAsync(options, releasesCacheFilePath, cancellationToken).ConfigureAwait(false);
 
             var mongoToolsVersion = mongoToolsVersions.Versions.FirstOrDefault()
                 ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version");
@@ -178,25 +188,25 @@ internal static class MongoExecutableDownloader
             var mongoToolsDownload = mongoToolsVersion.Downloads.SingleOrDefault(x => x.Architecture == architecture && x.Name == target)
                 ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version for architecture {architecture} and target {target}");
 
-            var exeDirPath = Path.Combine(baseExeDirPath, mongoToolsVersion.Version);
+            var versionDirName = DownloadReleaseHelper.GetVersionDirectoryName(mongoToolsVersion.Version);
+            var exeDirPath = Path.Combine(baseExeDirPath, versionDirName);
             var mongoImportExeFilePath = Path.Combine(exeDirPath, MongoImportExeFileName);
             var mongoExportExeFilePath = Path.Combine(exeDirPath, MongoExportExeFileName);
 
             if (File.Exists(mongoImportExeFilePath) && File.Exists(mongoExportExeFilePath))
             {
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
 
-            var tmpDirName = $"tools-{mongoToolsVersion.Version}-{Path.GetRandomFileName()}";
-            var tmpDownloadDirPath = Path.Combine(TmpDirPath, "downloads", tmpDirName);
-            var tmpUncompressDirPath = Path.Combine(TmpDirPath, "uncompress", tmpDirName);
+            var tmpDirName = $"tools-{versionDirName}-{Path.GetRandomFileName()}";
+            var tmpDownloadDirPath = Path.Combine(AppDataDirectory.TmpPath, "downloads", tmpDirName);
+            var tmpUncompressDirPath = Path.Combine(AppDataDirectory.TmpPath, "uncompress", tmpDirName);
 
-            Directory.CreateDirectory(exeDirPath);
             Directory.CreateDirectory(tmpDownloadDirPath);
             Directory.CreateDirectory(tmpUncompressDirPath);
 
-            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, Path.GetFileName(mongoToolsDownload.Archive.Url));
+            var tmpDownloadFilePath = Path.Combine(tmpDownloadDirPath, DownloadReleaseHelper.GetArchiveFileName(mongoToolsDownload.Archive.Url));
 
             try
             {
@@ -218,10 +228,12 @@ internal static class MongoExecutableDownloader
                     throw new EphemeralMongoException($"The executable files {tmpMongoImportExeFilePath} and {tmpMongoExportExeFilePath} could not be copied to {exeDirPath} because they do not exist");
                 }
 
+                Directory.CreateDirectory(exeDirPath);
+
                 SafeFileCopy(tmpMongoImportExeFilePath, mongoImportExeFilePath);
                 SafeFileCopy(tmpMongoExportExeFilePath, mongoExportExeFilePath);
 
-                await UpdateLastCheckFileAsync(lastCheckFilePath).ConfigureAwait(false);
+                await UpdateLastCheckFileAsync(lastCheckFilePath, checkedAtUtc).ConfigureAwait(false);
                 return (mongoImportExeFilePath, mongoExportExeFilePath);
             }
             finally
@@ -236,8 +248,24 @@ internal static class MongoExecutableDownloader
         }
     }
 
-    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath)
+    private static bool IsLastCheckRecent(DateTime lastCheckDateUtc, TimeSpan newVersionCheckTimeout)
     {
+        var lastCheckAge = DateTime.UtcNow - lastCheckDateUtc;
+
+        // A last check date in the future (clock changes, copied files) would otherwise skip checking for a newer version for too long
+        return lastCheckDateUtc > FileTimeEpochUtc && lastCheckAge >= TimeSpan.Zero && lastCheckAge < newVersionCheckTimeout;
+    }
+
+    // The last check date is the date the release information was downloaded, which can be earlier than now when it was cached.
+    // Otherwise, binaries could be up to twice as old as NewVersionCheckTimeout before checking for a newer version.
+    private static async Task UpdateLastCheckFileAsync(string lastCheckFilePath, DateTime? checkedAtUtc)
+    {
+        if (checkedAtUtc == null)
+        {
+            // The release information couldn't be downloaded and an outdated copy was used, so the next run should check again
+            return;
+        }
+
         const int maxAttempts = 3;
         const int retryDelayMs = 50;
 
@@ -251,6 +279,7 @@ internal static class MongoExecutableDownloader
 #else
                 await File.Create(lastCheckFilePath).DisposeAsync().ConfigureAwait(false);
 #endif
+                File.SetLastWriteTimeUtc(lastCheckFilePath, checkedAtUtc.Value);
                 return;
             }
             catch (IOException)
@@ -265,7 +294,7 @@ internal static class MongoExecutableDownloader
         }
     }
 
-    private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath)
+    private static string? FindLatestExistingMongodExeFilePath(string baseExeDirPath, bool deleteIfIncomplete)
     {
         var latestVersion = FindLatestDirectoryVersion(baseExeDirPath);
         if (latestVersion == null)
@@ -281,6 +310,11 @@ internal static class MongoExecutableDownloader
             return exeFilePath;
         }
 
+        if (!deleteIfIncomplete)
+        {
+            return null;
+        }
+
         try
         {
             Directory.Delete(exeDirPath);
@@ -293,7 +327,7 @@ internal static class MongoExecutableDownloader
         return null;
     }
 
-    private static (string MongoImportExePath, string MongoExportExePath)? FindLatestExistingToolExeFilePaths(string baseExeDirPath)
+    private static (string MongoImportExePath, string MongoExportExePath)? FindLatestExistingToolExeFilePaths(string baseExeDirPath, bool deleteIfIncomplete)
     {
         var latestVersion = FindLatestDirectoryVersion(baseExeDirPath);
         if (latestVersion == null)
@@ -308,6 +342,11 @@ internal static class MongoExecutableDownloader
         if (File.Exists(mongoImportexeFilePath) && File.Exists(mongoExportexeFilePath))
         {
             return (mongoImportexeFilePath, mongoExportexeFilePath);
+        }
+
+        if (!deleteIfIncomplete)
+        {
+            return null;
         }
 
         try
@@ -355,14 +394,30 @@ internal static class MongoExecutableDownloader
             return;
         }
 
+        // Copy to a unique temporary file first, then rename it, so other processes never see a partially copied file at the destination path.
+        // The temporary file is in the same directory so that the rename is atomic.
+        var tmpDestFilePath = destFilePath + "." + Path.GetRandomFileName() + ".tmp";
+
         try
         {
-            File.Copy(sourceFilePath, destFilePath, overwrite: false);
+            File.Copy(sourceFilePath, tmpDestFilePath, overwrite: false);
+            File.Move(tmpDestFilePath, destFilePath);
         }
         catch (IOException) when (File.Exists(destFilePath))
         {
             // Another process already copied the file, which is fine
-            // This mostly happens in tests where we run two assemblies side by side (net9.0 and net472 for instance)
+            // This mostly happens in tests where we run two assemblies side by side (net10.0 and net472 for instance)
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tmpDestFilePath);
+            }
+            catch (IOException)
+            {
+                // We did our best. This leftover file is harmless.
+            }
         }
     }
 }

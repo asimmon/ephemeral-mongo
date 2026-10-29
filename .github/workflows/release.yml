@@ -1,25 +1,135 @@
 name: Release
 
+# Releases are started manually from main. The tag is only created once the packages are published,
+# so a failed release doesn't burn a version number and can be fixed on main before trying again.
 on:
-  push:
-    tags: ["*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, like 3.2.1 or 3.3.0-preview.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  prepare:
     runs-on: ubuntu-24.04
+    # Includes waiting for CI to complete if the release was started right after a push to main
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      # Required to look up the CI run of the released commit
+      actions: read
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-dotnet@v4
-
-      # https://www.mongodb.com/docs/manual/tutorial/install-mongodb-enterprise-on-ubuntu-tarball/#prerequisites
-      - run: |
-          sudo apt-get install libcurl4 libgssapi-krb5-2 libldap2 libwrap0 libsasl2-2 libsasl2-modules libsasl2-modules-gssapi-mit snmp openssl liblzma5
-
-      - run: ./build.ps1
-        shell: pwsh
+      - name: Validate the version
+        shell: bash
         env:
-          NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases can only be started from main, not $GITHUB_REF."
+            exit 1
+          fi
+
+          # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string, without build metadata which NuGet ignores
+          identifier='(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)'
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-$identifier(\.$identifier)*)?$ ]]; then
+            echo "::error::$VERSION is not a valid semantic version, like 3.2.1 or 3.3.0-preview.1."
+            exit 1
+          fi
+
+          tags=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$VERSION" --jq '.[].ref')
+          if grep -qxF "refs/tags/$VERSION" <<< "$tags"; then
+            echo "::error::Tag $VERSION already exists."
+            exit 1
+          fi
+
+      # Tests already ran on every OS in the CI workflow for this exact commit. Releasing doesn't run them again,
+      # so a flaky test or an unavailable MongoDB download server can't block a release that CI already validated.
+      - name: Wait for CI to succeed on the released commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=""
+          for attempt in $(seq 1 20); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            echo "No CI run found yet for $GITHUB_SHA, waiting..."
+            sleep 15
+          done
+
+          if [ -z "$run_id" ]; then
+            echo "::error::No CI run found for $GITHUB_SHA. Run the CI workflow manually on main, then re-run this release."
+            exit 1
+          fi
+
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+
+  pack-publish:
+    needs: prepare
+    uses: ./.github/workflows/pack-publish.yml
+    with:
+      version: ${{ inputs.version }}
+    secrets:
+      NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+  # Only this job can write to the repository, and it doesn't check out, build or run any code from it.
+  # A tag created with the workflow token doesn't trigger other workflows.
+  tag:
+    needs: pack-publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # The packages pushed to NuGet are also attached to the GitHub release
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: packages
+
+      # An existing tag is only reused when it points to the released commit, so this job can be re-run if creating the release failed
+      - name: Create the tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$VERSION" --jq ".[] | select(.ref == \"refs/tags/$VERSION\") | .object.sha")
+          if [ -z "$tag_sha" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$VERSION" -f sha="$GITHUB_SHA" --silent
+          elif [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag $VERSION already exists on $tag_sha instead of $GITHUB_SHA."
+            exit 1
+          fi
+
+      # Release notes list the pull requests merged since the previous release.
+      # A stable release starts from the previous stable release, so that its notes also cover the changes of its previews.
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          options=()
+          if [[ "$VERSION" == *-* ]]; then
+            options=(--prerelease)
+          else
+            previous=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
+            if [ -n "$previous" ]; then
+              options=(--notes-start-tag "$previous")
+            fi
+          fi
+
+          gh release create "$VERSION" packages/*.nupkg --repo "$GITHUB_REPOSITORY" --verify-tag --title "$VERSION" --generate-notes "${options[@]}"

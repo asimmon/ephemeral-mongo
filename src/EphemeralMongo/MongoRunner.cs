@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -9,7 +9,11 @@ namespace EphemeralMongo;
 
 public sealed class MongoRunner
 {
-    private static readonly string DefaultRootDataDirectory = Path.Combine(Path.GetTempPath(), "ephemeral-mongo", "data");
+    private static readonly string DefaultRootDataDirectory = AppDataDirectory.DataPath;
+
+    // https://github.com/mongodb/mongo/blob/master/src/mongo/util/exit_code.h (kNetworkError), e.g. when the port is already in use
+    private const uint MongodNetworkErrorExitCode = 48;
+    private const int MaxRandomPortAttempts = 3;
 
     private readonly IFileSystem _fileSystem;
     private readonly ITimeProvider _timeProvider;
@@ -21,7 +25,7 @@ public sealed class MongoRunner
     private IMongoProcess? _process;
     private string? _dataDirectory;
 
-    private MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
+    internal MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
     {
         this._fileSystem = fileSystem;
         this._timeProvider = timeProvider;
@@ -61,6 +65,11 @@ public sealed class MongoRunner
                 this._dataDirectory = Path.Combine(this._options.RootDataDirectoryPath, Path.GetRandomFileName());
             }
 
+            if (this._options.DataDirectory == null && this._options.RootDataDirectoryPath == DefaultRootDataDirectory)
+            {
+                AppDataDirectory.EnsureRootExists();
+            }
+
             this._fileSystem.CreateDirectory(this._dataDirectory);
 
             try
@@ -77,41 +86,31 @@ public sealed class MongoRunner
 
             this.CleanupOldDataDirectories();
 
-            this._options.MongoPort ??= this._portFactory.GetRandomAvailablePort();
+            // A random port is free when picked, but another process can take it before mongod binds to it,
+            // which is likely when many instances start in parallel, such as in test suites
+            var isRandomPort = this._options.MongoPort == null;
 
-            // Build mongod executable arguments
-            List<string> arguments =
-            [
-                "--dbpath", this._dataDirectory,
-                "--port", this._options.MongoPort.Value.ToString(CultureInfo.InvariantCulture),
-                "--bind_ip", "127.0.0.1"
-            ];
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            for (var attempt = 1; ; attempt++)
             {
-                arguments.Add("--tlsMode");
-                arguments.Add("disabled");
-            }
-
-            if (this._options.UseSingleNodeReplicaSet)
-            {
-                arguments.Add("--replSet");
-                arguments.Add(this._options.ReplicaSetName);
-            }
-
-            if (this._options.AdditionalArguments != null)
-            {
-                foreach (var additionalArgument in this._options.AdditionalArguments)
+                if (isRandomPort)
                 {
-                    if (!string.IsNullOrWhiteSpace(additionalArgument))
-                    {
-                        arguments.Add(additionalArgument);
-                    }
+                    this._options.MongoPort = this._portFactory.GetRandomAvailablePort();
+                }
+
+                this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, this.BuildMongodArguments());
+
+                try
+                {
+                    await this._process.StartAsync(cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+                catch (EphemeralMongoException ex) when (isRandomPort && attempt < MaxRandomPortAttempts && ex.ProcessExitCode == MongodNetworkErrorExitCode)
+                {
+                    this._options.StandardErrorLogger?.Invoke($"MongoDB could not listen on port {this._options.MongoPort}, retrying with another port.");
+                    this._process.Dispose();
+                    this._process = null;
                 }
             }
-
-            this._process = this._processFactory.CreateMongoProcess(this._options, MongoProcessKind.Mongod, executablePath, [.. arguments]);
-            await this._process.StartAsync(cancellationToken).ConfigureAwait(false);
 
             var connectionStringFormat = this._options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?directConnection=true&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
             var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, this._options.MongoPort, this._options.ReplicaSetName);
@@ -125,13 +124,54 @@ public sealed class MongoRunner
         }
     }
 
+    private string[] BuildMongodArguments()
+    {
+        List<string> arguments =
+        [
+            "--dbpath", this._dataDirectory!,
+            "--port", this._options.MongoPort!.Value.ToString(CultureInfo.InvariantCulture),
+            "--bind_ip", "127.0.0.1"
+        ];
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            arguments.Add("--tlsMode");
+            arguments.Add("disabled");
+        }
+
+        if (this._options.UseSingleNodeReplicaSet)
+        {
+            arguments.Add("--replSet");
+            arguments.Add(this._options.ReplicaSetName);
+        }
+
+        if (this._options.AdditionalArguments != null)
+        {
+            foreach (var additionalArgument in this._options.AdditionalArguments)
+            {
+                if (!string.IsNullOrWhiteSpace(additionalArgument))
+                {
+                    arguments.Add(additionalArgument);
+                }
+            }
+        }
+
+        return [.. arguments];
+    }
+
     private static int _ongoingRootDataDirectoryCleanupCount;
 
-    private void CleanupOldDataDirectories()
+    internal void CleanupOldDataDirectories()
     {
         if (this._options.DataDirectory != null)
         {
             // Data directory was set by user, do not trigger cleanup
+            return;
+        }
+
+        if (this._options.DataDirectoryLifetime is not { } dataDirectoryLifetime)
+        {
+            // Cleanup was disabled by user
             return;
         }
 
@@ -150,7 +190,7 @@ public sealed class MongoRunner
             }
             catch (Exception ex)
             {
-                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
+                this._options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{this._options.RootDataDirectoryPath}': {ex.Message}");
                 return;
             }
 
@@ -159,10 +199,24 @@ public sealed class MongoRunner
                 try
                 {
                     var dataDirectoryAge = this._timeProvider.UtcNow - this._fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
-                    if (dataDirectoryAge >= this._options.DataDirectoryLifetime)
+                    if (dataDirectoryAge < dataDirectoryLifetime)
                     {
-                        this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                        continue;
                     }
+
+                    // A running mongod holds an exclusive lock on this file, whereas an abandoned one (crashed or killed) doesn't
+                    var lockFilePath = Path.Combine(dataDirectoryPath, "mongod.lock");
+                    if (this._fileSystem.IsFileLocked(lockFilePath))
+                    {
+                        continue;
+                    }
+
+                    this._fileSystem.DeleteDirectory(dataDirectoryPath);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // Deleted since it was enumerated, most likely by the runner that owned it, so there's nothing left to clean up.
+                    // The creation time of a missing directory is 1601-01-01, which is why it was considered old in the first place.
                 }
                 catch (Exception ex)
                 {
@@ -368,7 +422,11 @@ public sealed class MongoRunner
 
             try
             {
+#if MONGODB_V3
+                using var client = new MongoClient(this.ConnectionString);
+#else
                 var client = new MongoClient(this.ConnectionString);
+#endif
                 var admin = client.GetDatabase("admin");
 
                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(defaultShutdownTimeoutInSeconds)))

@@ -128,15 +128,17 @@ internal sealed class MongodProcess : BaseMongoProcess
         var startupErrors = this._startupErrors.ToString();
         var startupErrorsMessage = string.IsNullOrWhiteSpace(startupErrors) ? string.Empty : $" Output: {startupErrors}";
 
-        return exitCode switch
+        var message = exitCode switch
         {
-            0 => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly.{startupErrorsMessage}"),
+            0 => $"The MongoDB process '{processDescription}' exited unexpectedly.{startupErrorsMessage}",
 
             // Happens on Windows for MongoDB Enterprise edition when sasl2.dll is missing
-            STATUS_DLL_NOT_FOUND => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}. This is likely due to a missing DLL.{startupErrorsMessage}"),
+            STATUS_DLL_NOT_FOUND => $"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}. This is likely due to a missing DLL.{startupErrorsMessage}",
 
-            _ => new EphemeralMongoException($"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}.{startupErrorsMessage}")
+            _ => $"The MongoDB process '{processDescription}' exited unexpectedly with code {exitCode}.{startupErrorsMessage}"
         };
+
+        return EphemeralMongoException.FromProcessExit(message, exitCode);
     }
 
     private async Task ConfigureAndWaitForReplicaSetReadinessAsync(CancellationToken cancellationToken)
@@ -165,6 +167,8 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         this.Process.Exited += OnProcessExited;
 
+        MongoClient? client = null;
+
         try
         {
             var settings = new MongoClientSettings
@@ -178,7 +182,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                 }
             };
 
-            var client = new MongoClient(settings);
+            client = new MongoClient(settings);
             var admin = client.GetDatabase("admin");
 
             var replConfig = new BsonDocument(new List<BsonElement>
@@ -208,7 +212,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                 {
                     await admin.RunCommandAsync<BsonDocument>(command, cancellationToken: combinedCts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -216,14 +220,14 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 try
                 {
                     await isReplicaSetReadyTcs.Task.ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -231,14 +235,14 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 try
                 {
                     await isTransactionReadyTcs.Task.ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
                     var timeoutMessage = string.Format(
                         CultureInfo.InvariantCulture,
@@ -246,7 +250,7 @@ internal sealed class MongodProcess : BaseMongoProcess
                         this.Options.ReplicaSetSetupTimeout.TotalSeconds,
                         nameof(this.Options.ReplicaSetSetupTimeout));
 
-                    throw new TimeoutException(timeoutMessage);
+                    throw new TimeoutException(timeoutMessage, ex);
                 }
 
                 this.HandleUnexpectedProcessExit();
@@ -255,6 +259,13 @@ internal sealed class MongodProcess : BaseMongoProcess
         finally
         {
             this.Process.Exited -= OnProcessExited;
+
+            if (client != null)
+            {
+                // The cluster configurator captures local variables, so these settings are unique and the driver created a dedicated cluster for them.
+                // Disposing the client isn't enough as the driver keeps clusters registered (with their background monitoring) for the lifetime of the app.
+                ClusterRegistry.Instance.UnregisterAndDisposeCluster(client.Cluster);
+            }
         }
     }
 

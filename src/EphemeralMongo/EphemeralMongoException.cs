@@ -11,4 +11,12 @@ public sealed class EphemeralMongoException : Exception
         : base(message, innerException)
     {
     }
+
+    // Set when a MongoDB process exited unexpectedly, so callers can react to specific failures
+    internal uint? ProcessExitCode { get; private set; }
+
+    internal static EphemeralMongoException FromProcessExit(string message, uint exitCode)
+    {
+        return new EphemeralMongoException(message) { ProcessExitCode = exitCode };
+    }
 }

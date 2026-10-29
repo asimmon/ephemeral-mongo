@@ -53,7 +53,8 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
                 StandardOutputLogger = this.MongoMessageLogger,
                 StandardErrorLogger = this.MongoMessageLogger,
                 RootDataDirectoryPath = rootDataDirectoryPath,
-                AdditionalArguments = ["--quiet"],
+                ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+                AdditionalArguments = MongoTestOptions.CommunityArguments,
             };
 
             testOutputHelper.WriteLine("Root data directory path: {0}", options.RootDataDirectoryPath);
@@ -133,6 +134,16 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
         await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V8, edition, replset);
     }
 
+    [Theory]
+    [InlineData(MongoEdition.Community, false)]
+    [InlineData(MongoEdition.Enterprise, false)]
+    [InlineData(MongoEdition.Community, true)]
+    [InlineData(MongoEdition.Enterprise, true)]
+    public async Task Mongo9Operations_ImportAndExport_SucceedsAcrossInstances(MongoEdition edition, bool replset)
+    {
+        await this.MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion.V9, edition, replset);
+    }
+
     private async Task MongoOperations_ImportAndExport_SucceedsAcrossInstances(MongoVersion version, MongoEdition edition, bool replset)
     {
         if (version is MongoVersion.V6 or MongoVersion.V7 && edition == MongoEdition.Enterprise && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -154,9 +165,11 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
             UseSingleNodeReplicaSet = replset,
             StandardOutputLogger = this.MongoMessageLogger,
             StandardErrorLogger = this.MongoMessageLogger,
+            ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+            ReplicaSetSetupTimeout = MongoTestOptions.ReplicaSetSetupTimeout,
             AdditionalArguments = edition == MongoEdition.Enterprise
-                ? ["--quiet", "--storageEngine", "inMemory"]
-                : ["--quiet"],
+                ? MongoTestOptions.EnterpriseInMemoryArguments
+                : MongoTestOptions.CommunityArguments,
         };
 
         using (var runner = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken))
@@ -278,6 +291,65 @@ public class MongoRunnerTests(ITestOutputHelper testOutputHelper, ITestContextAc
         finally
         {
             listener.Stop();
+        }
+    }
+
+    [Fact]
+    public async Task MongoOperations_FailedImportOrExport_ThrowsExceptionWithDetails()
+    {
+        const string databaseName = "default";
+        const string collectionName = "people";
+
+        var options = new MongoRunnerOptions
+        {
+            Version = MongoVersion.V8,
+            StandardOutputLogger = this.MongoMessageLogger,
+            StandardErrorLogger = this.MongoMessageLogger,
+            ConnectionTimeout = MongoTestOptions.ConnectionTimeout,
+            AdditionalArguments = MongoTestOptions.CommunityArguments,
+        };
+
+        var malformedFilePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var missingFilePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+        try
+        {
+#pragma warning disable CA1849 // File.WriteAllTextAsync isn't available on .NET Framework
+            File.WriteAllText(malformedFilePath, "{ this is not json");
+#pragma warning restore CA1849
+
+            using var runner = await MongoRunner.RunAsync(options, testContextAccessor.Current.CancellationToken);
+
+            // Missing input file
+            var ex = await Assert.ThrowsAsync<EphemeralMongoException>(() => runner.ImportAsync(databaseName, collectionName, missingFilePath, cancellationToken: testContextAccessor.Current.CancellationToken));
+            testOutputHelper.WriteLine(ex.Message);
+            Assert.Contains("exit code", ex.Message);
+            Assert.Contains(Path.GetFileName(missingFilePath), ex.Message);
+
+            // Malformed JSON
+            ex = await Assert.ThrowsAsync<EphemeralMongoException>(() => runner.ImportAsync(databaseName, collectionName, malformedFilePath, cancellationToken: testContextAccessor.Current.CancellationToken));
+            testOutputHelper.WriteLine(ex.Message);
+            Assert.Contains("exit code", ex.Message);
+
+            // Invalid additional argument
+            ex = await Assert.ThrowsAsync<EphemeralMongoException>(() => runner.ImportAsync(databaseName, collectionName, malformedFilePath, ["--invalid-argument"], cancellationToken: testContextAccessor.Current.CancellationToken));
+            testOutputHelper.WriteLine(ex.Message);
+            Assert.Contains("invalid-argument", ex.Message);
+
+            // Unwritable output path (its parent is a file, not a directory)
+            var unwritableFilePath = Path.Combine(malformedFilePath, "export.json");
+            ex = await Assert.ThrowsAsync<EphemeralMongoException>(() => runner.ExportAsync(databaseName, collectionName, unwritableFilePath, cancellationToken: testContextAccessor.Current.CancellationToken));
+            testOutputHelper.WriteLine(ex.Message);
+            Assert.Contains("exit code", ex.Message);
+
+#pragma warning disable CA1849 // We want to test synchronous methods
+            Assert.Throws<EphemeralMongoException>(() => runner.Import(databaseName, collectionName, missingFilePath, cancellationToken: testContextAccessor.Current.CancellationToken));
+            Assert.Throws<EphemeralMongoException>(() => runner.Export(databaseName, collectionName, unwritableFilePath, cancellationToken: testContextAccessor.Current.CancellationToken));
+#pragma warning restore CA1849
+        }
+        finally
+        {
+            File.Delete(malformedFilePath);
         }
     }
 
