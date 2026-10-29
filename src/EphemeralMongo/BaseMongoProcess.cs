@@ -23,6 +23,8 @@ internal abstract class BaseMongoProcess : IMongoProcess
             StandardErrorEncoding = Encoding.UTF8,
         };
 
+        KillOnParentExit.EnableIfSupported(processStartInfo);
+
         this.Process = new Process
         {
             StartInfo = processStartInfo,
