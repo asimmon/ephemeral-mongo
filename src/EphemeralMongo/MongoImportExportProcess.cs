@@ -23,7 +23,7 @@ internal sealed class MongoImportExportProcess : BaseMongoProcess
 
         try
         {
-            this.Process.Start();
+            this.StartProcess();
 
             this.Process.BeginOutputReadLine();
             this.Process.BeginErrorReadLine();
@@ -56,7 +56,7 @@ internal sealed class MongoImportExportProcess : BaseMongoProcess
     private EphemeralMongoException CreateExceptionFromFailedProcessExit()
     {
         var exitCode = this.Process.ExitCode;
-        var processDescription = $"{this.Process.StartInfo.FileName} {this.Process.StartInfo.Arguments}";
+        var processDescription = this.ProcessDescription;
 
         string output;
         lock (this._output)

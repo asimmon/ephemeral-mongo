@@ -5,16 +5,24 @@ namespace EphemeralMongo;
 
 internal abstract class BaseMongoProcess : IMongoProcess
 {
+    private readonly string _executablePath;
+
     protected BaseMongoProcess(MongoRunnerOptions options, string executablePath, string[] arguments)
     {
+        this._executablePath = executablePath;
         this.Options = options;
 
         NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
 
+        var joinedArguments = string.Join(" ", arguments);
+
+        // The process start info might be modified to kill the process when the current process exits, so we keep the original command for error messages
+        this.ProcessDescription = $"{executablePath} {joinedArguments}";
+
         var processStartInfo = new ProcessStartInfo
         {
             FileName = executablePath,
-            Arguments = string.Join(" ", arguments),
+            Arguments = joinedArguments,
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -23,7 +31,7 @@ internal abstract class BaseMongoProcess : IMongoProcess
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        KillOnParentExit.EnableIfSupported(processStartInfo);
+        KillOnParentExit.Configure(processStartInfo);
 
         this.Process = new Process
         {
@@ -38,6 +46,13 @@ internal abstract class BaseMongoProcess : IMongoProcess
     protected MongoRunnerOptions Options { get; }
 
     protected Process Process { get; }
+
+    protected string ProcessDescription { get; }
+
+    protected void StartProcess()
+    {
+        KillOnParentExit.Start(this.Process, this._executablePath);
+    }
 
     private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
     {

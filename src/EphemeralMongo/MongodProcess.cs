@@ -76,7 +76,7 @@ internal sealed class MongodProcess : BaseMongoProcess
 
         try
         {
-            await this.Process.StartProcessWithRetryAsync(cancellationToken).ConfigureAwait(false);
+            await ProcessStartRetry.StartProcessWithRetryAsync(this.StartProcess, cancellationToken).ConfigureAwait(false);
 
             this.Process.BeginOutputReadLine();
             this.Process.BeginErrorReadLine();
@@ -124,7 +124,7 @@ internal sealed class MongodProcess : BaseMongoProcess
     private EphemeralMongoException CreateExceptionFromUnexpectedProcessExit()
     {
         var exitCode = (uint)this.Process.ExitCode;
-        var processDescription = $"{this.Process.StartInfo.FileName} {this.Process.StartInfo.Arguments}";
+        var processDescription = this.ProcessDescription;
         var startupErrors = this._startupErrors.ToString();
         var startupErrorsMessage = string.IsNullOrWhiteSpace(startupErrors) ? string.Empty : $" Output: {startupErrors}";
 
@@ -319,10 +319,10 @@ internal sealed class MongodProcess : BaseMongoProcess
     }
 }
 
-file static class ProcessExtensions
+file static class ProcessStartRetry
 {
     [SuppressMessage("Usage", "CA2249:Consider using \'string.Contains\' instead of \'string.IndexOf\'", Justification = "Not worth it due to multi-targeting")]
-    public static async Task StartProcessWithRetryAsync(this Process process, CancellationToken cancellationToken)
+    public static async Task StartProcessWithRetryAsync(Action startProcess, CancellationToken cancellationToken)
     {
         const int maxAttempts = 3;
         const int retryDelayMs = 50;
@@ -331,11 +331,12 @@ file static class ProcessExtensions
         {
             try
             {
-                process.Start();
+                startProcess();
                 return;
             }
             // This exception rarely happens on Linux in CI during tests with high concurrency
             // System.ComponentModel.Win32Exception : An error occurred trying to start process '<omitted>/mongod' with working directory '<omitted>'. Text file busy
+            // When mongod is executed through setpriv (see KillOnParentExit), the shell fails instead and the error is reported as an unexpected process exit
             catch (Win32Exception ex) when (ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 if (attempt == maxAttempts)
