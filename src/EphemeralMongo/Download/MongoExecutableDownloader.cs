@@ -10,8 +10,6 @@ internal static class MongoExecutableDownloader
     private const string MongoExportExeFileNameWithoutExt = "mongoexport";
     private const string LastCheckFileName = "last-check.txt";
     private const string LockFileName = "download.lock";
-    private const string MongodReleasesUrl = "https://downloads.mongodb.org/current.json";
-    private const string ToolsReleasesUrl = "https://downloads.mongodb.org/tools/db/release.json";
 
     private static readonly string MongodExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongodExeFileNameWithoutExt + ".exe" : MongodExeFileNameWithoutExt;
     private static readonly string MongoImportExeFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? MongoImportExeFileNameWithoutExt + ".exe" : MongoImportExeFileNameWithoutExt;
@@ -38,7 +36,7 @@ internal static class MongoExecutableDownloader
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
         var lastCheckDateUtc = File.GetLastWriteTimeUtc(lastCheckFilePath);
 
-        var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
+        var skipNewExeVersionCheck = IsLastCheckRecent(lastCheckDateUtc, options.NewVersionCheckTimeout);
         if (skipNewExeVersionCheck)
         {
             // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
@@ -66,7 +64,7 @@ internal static class MongoExecutableDownloader
 
             // Shared by all editions and major versions, so it lives in their parent directory
             var releasesCacheFilePath = Path.Combine(AppDataDirectory.RootPath, "bin", MongodExeFileNameWithoutExt, "current.json");
-            var (mongodVersions, checkedAtUtc) = await ReleaseInformationCache.GetAsync<MongoVersionsDto>(options.Transport, MongodReleasesUrl, releasesCacheFilePath, options.NewVersionCheckTimeout, options.StandardErrorLogger, cancellationToken).ConfigureAwait(false);
+            var (mongodVersions, checkedAtUtc) = await ReleaseInformationCache.GetMongodVersionsAsync(options, releasesCacheFilePath, cancellationToken).ConfigureAwait(false);
 
             var mongodVersion = mongodVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(majorVersion.ToString(CultureInfo.InvariantCulture) + ".", StringComparison.Ordinal))
                 ?? throw new EphemeralMongoException($"Could not find a production release for MongoDB major version {majorVersion}");
@@ -152,7 +150,7 @@ internal static class MongoExecutableDownloader
         var lastCheckFilePath = Path.Combine(baseExeDirPath, LastCheckFileName);
         var lastCheckDateUtc = File.GetLastWriteTimeUtc(lastCheckFilePath);
 
-        var skipNewExeVersionCheck = lastCheckDateUtc > FileTimeEpochUtc && DateTime.UtcNow - lastCheckDateUtc < options.NewVersionCheckTimeout;
+        var skipNewExeVersionCheck = IsLastCheckRecent(lastCheckDateUtc, options.NewVersionCheckTimeout);
         if (skipNewExeVersionCheck)
         {
             // Another process might be populating this directory right now, so incomplete directories are only deleted while holding the lock
@@ -182,7 +180,7 @@ internal static class MongoExecutableDownloader
             var target = DownloadTargetHelper.GetTarget(options.Version);
 
             var releasesCacheFilePath = Path.Combine(baseExeDirPath, "release.json");
-            var (mongoToolsVersions, checkedAtUtc) = await ReleaseInformationCache.GetAsync<ToolsVersionsDto>(options.Transport, ToolsReleasesUrl, releasesCacheFilePath, options.NewVersionCheckTimeout, options.StandardErrorLogger, cancellationToken).ConfigureAwait(false);
+            var (mongoToolsVersions, checkedAtUtc) = await ReleaseInformationCache.GetToolsVersionsAsync(options, releasesCacheFilePath, cancellationToken).ConfigureAwait(false);
 
             var mongoToolsVersion = mongoToolsVersions.Versions.FirstOrDefault()
                 ?? throw new EphemeralMongoException($"Could not find the latest MongoDB tools version");
@@ -248,6 +246,14 @@ internal static class MongoExecutableDownloader
         {
             SharedMutex.Release(baseExeDirName);
         }
+    }
+
+    private static bool IsLastCheckRecent(DateTime lastCheckDateUtc, TimeSpan newVersionCheckTimeout)
+    {
+        var lastCheckAge = DateTime.UtcNow - lastCheckDateUtc;
+
+        // A last check date in the future (clock changes, copied files) would otherwise skip checking for a newer version for too long
+        return lastCheckDateUtc > FileTimeEpochUtc && lastCheckAge >= TimeSpan.Zero && lastCheckAge < newVersionCheckTimeout;
     }
 
     // The last check date is the date the release information was downloaded, which can be earlier than now when it was cached.

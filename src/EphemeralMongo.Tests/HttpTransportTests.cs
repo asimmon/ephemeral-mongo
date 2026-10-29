@@ -53,6 +53,29 @@ public class HttpTransportTests(ITestContextAccessor testContextAccessor)
     }
 
     [Fact]
+    public async Task DownloadFileAsync_WithAttemptTimeout_RetriesHangingRequests()
+    {
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) })
+        {
+            ResponseDelay = TimeSpan.FromMinutes(5),
+        };
+
+        var filePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+        try
+        {
+            var ex = await Assert.ThrowsAsync<EphemeralMongoException>(() => new HttpTransport(handler).DownloadFileAsync(Url, filePath, TimeSpan.FromMilliseconds(100), testContextAccessor.Current.CancellationToken));
+
+            Assert.IsAssignableFrom<OperationCanceledException>(ex.InnerException);
+            Assert.Equal(3, handler.RequestCount);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
     public async Task DownloadFileAsync_WithNetworkError_RetriesAndWritesFile()
     {
         var handler = new FakeHttpMessageHandler(

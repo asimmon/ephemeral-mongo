@@ -41,11 +41,17 @@ public sealed class HttpTransport
         this._httpClient = new HttpClient(handler);
     }
 
-    internal async Task DownloadFileAsync(string url, string filePath, CancellationToken cancellationToken)
+    internal Task DownloadFileAsync(string url, string filePath, CancellationToken cancellationToken)
+    {
+        return this.DownloadFileAsync(url, filePath, attemptTimeout: null, cancellationToken);
+    }
+
+    // The attempt timeout covers the whole request including the response body, which suits small documents
+    internal async Task DownloadFileAsync(string url, string filePath, TimeSpan? attemptTimeout, CancellationToken cancellationToken)
     {
         try
         {
-            await ExecuteWithRetryAsync(ct => this.DownloadFileOnceAsync(url, filePath, ct), cancellationToken).ConfigureAwait(false);
+            await ExecuteWithRetryAsync(ct => this.DownloadFileOnceAsync(url, filePath, attemptTimeout, ct), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -53,13 +59,22 @@ public sealed class HttpTransport
         }
     }
 
-    private async Task DownloadFileOnceAsync(string url, string filePath, CancellationToken cancellationToken)
+    private async Task DownloadFileOnceAsync(string url, string filePath, TimeSpan? attemptTimeout, CancellationToken cancellationToken)
     {
-        using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        // Cancelling the attempt, but not the caller's token, is retried
+        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        if (attemptTimeout.HasValue)
+        {
+            attemptCts.CancelAfter(attemptTimeout.Value);
+        }
+
+        var attemptCancellationToken = attemptCts.Token;
+
+        using var response = await this._httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, attemptCancellationToken).ConfigureAwait(false);
         EnsureSuccessStatusCode(response);
 
         // HttpClient.Timeout doesn't apply to reading the response body, so a stalled download would otherwise hang forever
-        using var inactivityCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var inactivityCts = CancellationTokenSource.CreateLinkedTokenSource(attemptCancellationToken);
 
         // Disposing the response aborts pending reads on runtimes where stream reads ignore cancellation tokens (.NET Framework)
         using var inactivityRegistration = inactivityCts.Token.Register(response.Dispose);
@@ -70,14 +85,14 @@ public sealed class HttpTransport
 #if NET8_0_OR_GREATER
         Stream sourceStream;
         Stream destinationStream;
-        await using ((sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
+        await using ((sourceStream = await response.Content.ReadAsStreamAsync(attemptCancellationToken).ConfigureAwait(false)).ConfigureAwait(false))
         await using ((destinationStream = File.Create(filePath)).ConfigureAwait(false))
         {
             int bytesRead;
             inactivityCts.CancelAfter(ReadInactivityTimeout);
             while ((bytesRead = await sourceStream.ReadAsync(buffer.AsMemory(0, bufferSize), inactivityCts.Token).ConfigureAwait(false)) > 0)
             {
-                await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), attemptCancellationToken).ConfigureAwait(false);
                 inactivityCts.CancelAfter(ReadInactivityTimeout);
             }
         }
@@ -90,13 +105,13 @@ public sealed class HttpTransport
 #if NETSTANDARD2_1_OR_GREATER
         while ((bytesRead = await sourceStream.ReadAsync(buffer.AsMemory(0, bufferSize), inactivityCts.Token).ConfigureAwait(false)) > 0)
         {
-            await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+            await destinationStream.WriteAsync(buffer.AsMemory(0, bytesRead), attemptCancellationToken).ConfigureAwait(false);
             inactivityCts.CancelAfter(ReadInactivityTimeout);
         }
 #else
         while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, bufferSize, inactivityCts.Token).ConfigureAwait(false)) > 0)
         {
-            await destinationStream.WriteAsync(buffer, 0, bytesRead, cancellationToken).ConfigureAwait(false);
+            await destinationStream.WriteAsync(buffer, 0, bytesRead, attemptCancellationToken).ConfigureAwait(false);
             inactivityCts.CancelAfter(ReadInactivityTimeout);
         }
 #endif
