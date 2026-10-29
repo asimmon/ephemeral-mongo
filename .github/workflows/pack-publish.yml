@@ -20,7 +20,7 @@ permissions:
 jobs:
   # Packages are built from scratch, without any cache, since tests already ran in the CI workflow for this exact commit
   pack:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,7 +59,7 @@ jobs:
   # The API key is only exposed to this job, which doesn't check out, build or run any code from the repository
   publish:
     needs: pack
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

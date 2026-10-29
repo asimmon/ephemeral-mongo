@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Includes waiting for CI to complete if the release was started right after a push to main
     timeout-minutes: 45
     permissions:
@@ -88,7 +88,7 @@ jobs:
   # A tag created with the workflow token doesn't trigger other workflows.
   tag:
     needs: pack-publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
