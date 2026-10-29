@@ -6,14 +6,12 @@ namespace EphemeralMongo;
 internal abstract class BaseMongoProcess : IMongoProcess
 {
     private readonly string _executablePath;
-    private readonly KillOnParentExitMode _killOnParentExitMode;
+    private readonly IKillOnParentExitStrategy _killOnParentExit;
 
     protected BaseMongoProcess(MongoRunnerOptions options, string executablePath, string[] arguments)
     {
         this._executablePath = executablePath;
         this.Options = options;
-
-        NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
 
         var joinedArguments = string.Join(" ", arguments);
 
@@ -32,7 +30,8 @@ internal abstract class BaseMongoProcess : IMongoProcess
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        this._killOnParentExitMode = KillOnParentExit.Configure(processStartInfo, options.KillMongoProcessesWhenCurrentProcessExits);
+        // Ensures the process is killed when the current process exits, even if it crashes or is killed
+        this._killOnParentExit = KillOnParentExit.Configure(processStartInfo, options.KillMongoProcessesWhenCurrentProcessExits);
 
         this.Process = new Process
         {
@@ -52,13 +51,13 @@ internal abstract class BaseMongoProcess : IMongoProcess
 
     protected void StartProcess()
     {
-        KillOnParentExit.Start(this.Process, this._executablePath, this._killOnParentExitMode);
+        this._killOnParentExit.Start(this.Process, this._executablePath);
     }
 
     // Tells users how to disable killing MongoDB processes when the current process exits, if it might have caused this process to fail
     protected string GetKillOnParentExitTroubleshootingMessage(string output)
     {
-        return KillOnParentExit.GetTroubleshootingMessage(this._killOnParentExitMode, this.Process.ExitCode, output);
+        return this._killOnParentExit.GetTroubleshootingMessage(this.Process.ExitCode, output);
     }
 
     private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)

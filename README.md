@@ -143,8 +143,8 @@ using (var runner = await MongoRunner.RunAsync(options))
 * The resulting connection string will depend on your options (`UseSingleNodeReplicaSet`).
 * By default, a unique temporary data directory is used and deleted when the `runner` is disposed. Leftover data directories older than `DataDirectoryLifetime` are deleted on later runs.
 * MongoDB processes are killed when your process exits, even if it crashes or is killed, so they don't keep running after an interrupted test run:
-  * Windows: with a job object, except on .NET Framework.
-  * Linux: with [`ProcessStartInfo.KillOnParentExit`](https://github.com/dotnet/runtime/pull/127112) on .NET 11 and later. On earlier versions, the same mechanism is used by starting them through `setpriv --pdeathsig` from util-linux 2.33 or later, if available. Disable it with `KillMongoProcessesWhenCurrentProcessExits`.
+  * Windows: with [`ProcessStartInfo.KillOnParentExit`](https://devblogs.microsoft.com/dotnet/process-api-improvements-in-dotnet-11/) on .NET 11 and later. On earlier versions, your process is assigned to a job object, except on .NET Framework.
+  * Linux: with `ProcessStartInfo.KillOnParentExit` on .NET 11 and later. On earlier versions, the same mechanism is used by starting them through `setpriv --pdeathsig` from util-linux 2.33 or later, if available. Disable it with `KillMongoProcessesWhenCurrentProcessExits`.
   * macOS: not supported, as there is no equivalent mechanism.
 
 ## Faster mongod instances for tests

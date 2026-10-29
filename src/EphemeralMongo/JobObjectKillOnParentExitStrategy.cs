@@ -9,33 +9,34 @@ using Microsoft.Win32.SafeHandles;
 
 namespace EphemeralMongo;
 
-[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "We ensure this runs on Windows")]
-internal static class NativeMethods
+// Used on Windows before .NET 11. Not used on .NET Framework, where the current process crashes even if we don't dispose
+// the job object handle (tested with in test project while running "dotnet test").
+//
+// "A job object allows groups of processes to be managed as a unit.
+// Operations performed on a job object affect all processes associated with the job object.
+// Examples include [...] or terminating all processes associated with a job."
+// See: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This strategy is only used on Windows")]
+internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrategy
 {
     private static readonly object CreateJobObjectLock = new object();
     private static SafeFileHandle? _jobObjectHandle;
 
-    public static void EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled()
+    public void Configure(ProcessStartInfo processStartInfo)
     {
-        // We only support this feature on Windows and modern .NET (netcoreapp3.1, net5.0, net6.0, net7.0 and so on):
-        // - Job objects are Windows-specific
-        // - On .NET Framework, the current process crashes even if we don't dispose the job object handle (tested with in test project while running "dotnet test")
-        //
-        // "A job object allows groups of processes to be managed as a unit.
-        // Operations performed on a job object affect all processes associated with the job object.
-        // Examples include [...] or terminating all processes associated with a job."
-        // See: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
-        if (IsWindows() && !IsNetFramework())
-        {
-            CreateSingletonJobObject();
-        }
+        CreateSingletonJobObject();
     }
 
-    private static bool IsWindows() => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+    public void Start(Process process, string executablePath)
+    {
+        // Child processes are automatically associated to the job object of the current process when they are created
+        process.Start();
+    }
 
-    // This way of detecting if running on .NET Framework is also used in .NET runtime tests, see:
-    // https://github.com/dotnet/runtime/blob/v6.0.0/src/libraries/Common/tests/TestUtilities/System/PlatformDetection.Windows.cs#L21
-    private static bool IsNetFramework() => RuntimeInformation.FrameworkDescription.StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
+    public string GetTroubleshootingMessage(int exitCode, string output)
+    {
+        return string.Empty;
+    }
 
     private static unsafe void CreateSingletonJobObject()
     {
