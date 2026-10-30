@@ -69,7 +69,7 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
             await Task.WhenAny(ready.Task, parentProcess.WaitForExitAsync(cancellationToken)).WaitAsync(TimeSpan.FromMinutes(3), cancellationToken);
             Assert.True(ready.Task.IsCompleted, "The parent process exited before starting mongod");
 
-            var mongodProcessId = int.Parse(await File.ReadAllTextAsync(pidFilePath, cancellationToken), CultureInfo.InvariantCulture);
+            var mongodProcessId = await ReadPidFileAsync(pidFilePath, cancellationToken);
             mongod = Process.GetProcessById(mongodProcessId);
 
             // We don't wait for the parent process to exit after killing it. WaitForExit also waits until its redirected output is closed,
@@ -101,6 +101,23 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
             TryKill(parentProcess);
             mongod?.Dispose();
             TryDeleteDirectory(directory);
+        }
+    }
+
+    // mongod writes its PID file after it starts accepting connections, so it might not exist yet when the parent process is ready
+    private static async Task<int> ReadPidFileAsync(string pidFilePath, CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        while (true)
+        {
+            if (File.Exists(pidFilePath) && int.TryParse(await File.ReadAllTextAsync(pidFilePath, cancellationToken), NumberStyles.Integer, CultureInfo.InvariantCulture, out var processId))
+            {
+                return processId;
+            }
+
+            Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(30), $"mongod didn't write its PID file '{pidFilePath}'");
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
         }
     }
 

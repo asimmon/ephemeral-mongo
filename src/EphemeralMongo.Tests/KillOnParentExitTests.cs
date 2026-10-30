@@ -275,14 +275,18 @@ public class KillOnParentExitTests
         SkipOnWindows();
 
         using var sleepingProcess = CreateShellProcess("exec sleep 30");
+        var logFilePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
         try
         {
             sleepingProcess.Start();
 
-            using var watchdog = Process.Start(WatchdogKillOnParentExitStrategy.CreateWatchdogStartInfo())!;
+            using var watchdog = Process.Start(WatchdogKillOnParentExitStrategy.CreateWatchdogStartInfo(logFilePath))!;
             watchdog.StandardInput.Write($"{sleepingProcess.Id}\n");
             watchdog.StandardInput.Flush();
+
+            // The watchdog logs that it started after ignoring the signals. Sending one before that would terminate it.
+            WaitForWatchdogToStart(logFilePath);
 
             // Pressing Ctrl+C in a terminal sends SIGINT to the whole process group, including the watchdog
             using (var kill = Process.Start("kill", $"-{signal} {watchdog.Id}")!)
@@ -301,6 +305,18 @@ public class KillOnParentExitTests
         finally
         {
             TryKill(sleepingProcess);
+            File.Delete(logFilePath);
+        }
+    }
+
+    private static void WaitForWatchdogToStart(string logFilePath)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        while (!File.Exists(logFilePath) || !File.ReadAllLines(logFilePath).Any(line => line.StartsWith("Watchdog started", StringComparison.Ordinal)))
+        {
+            Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(5), "The watchdog didn't start");
+            Thread.Sleep(10);
         }
     }
 
