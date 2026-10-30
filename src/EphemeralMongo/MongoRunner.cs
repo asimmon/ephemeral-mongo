@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -14,6 +15,9 @@ public sealed class MongoRunner
     // https://github.com/mongodb/mongo/blob/master/src/mongo/util/exit_code.h (kNetworkError), e.g. when the port is already in use
     private const uint MongodNetworkErrorExitCode = 48;
     private const int MaxRandomPortAttempts = 3;
+
+    private const int MaxTextFileBusyAttempts = 3;
+    private const int TextFileBusyRetryDelayMs = 50;
 
     private readonly IFileSystem _fileSystem;
     private readonly ITimeProvider _timeProvider;
@@ -46,7 +50,7 @@ public sealed class MongoRunner
         return RunAsync(options, cancellationToken).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
-    private async Task<IMongoRunner> RunInternalAsync(CancellationToken cancellationToken)
+    internal async Task<IMongoRunner> RunInternalAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -90,7 +94,7 @@ public sealed class MongoRunner
             // which is likely when many instances start in parallel, such as in test suites
             var isRandomPort = this._options.MongoPort == null;
 
-            for (var attempt = 1; ; attempt++)
+            for (int portAttempt = 1, textFileBusyAttempt = 1; ;)
             {
                 if (isRandomPort)
                 {
@@ -104,11 +108,21 @@ public sealed class MongoRunner
                     await this._process.StartAsync(cancellationToken).ConfigureAwait(false);
                     break;
                 }
-                catch (EphemeralMongoException ex) when (isRandomPort && attempt < MaxRandomPortAttempts && ex.ProcessExitCode == MongodNetworkErrorExitCode)
+                catch (EphemeralMongoException ex) when (isRandomPort && portAttempt < MaxRandomPortAttempts && ex.ProcessExitCode == MongodNetworkErrorExitCode)
                 {
                     this._options.StandardErrorLogger?.Invoke($"MongoDB could not listen on port {this._options.MongoPort}, retrying with another port.");
                     this._process.Dispose();
                     this._process = null;
+                    portAttempt++;
+                }
+                catch (Exception ex) when (textFileBusyAttempt < MaxTextFileBusyAttempts && IsTextFileBusy(ex))
+                {
+                    this._options.StandardErrorLogger?.Invoke("MongoDB could not be executed because its file was busy, retrying.");
+                    this._process.Dispose();
+                    this._process = null;
+                    textFileBusyAttempt++;
+
+                    await Task.Delay(TextFileBusyRetryDelayMs, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -122,6 +136,16 @@ public sealed class MongoRunner
             this.Dispose(throwOnException: false);
             throw;
         }
+    }
+
+    // This rarely happens on Linux in CI during tests with high concurrency, either when starting the process:
+    // System.ComponentModel.Win32Exception : An error occurred trying to start process '<omitted>/mongod' with working directory '<omitted>'. Text file busy
+    // Or when mongod is executed through setpriv (see KillOnParentExitStrategies), as the shell that executes it exits instead:
+    // EphemeralMongoException : The MongoDB process '<omitted>/mongod <omitted>' exited unexpectedly with code 126. [...] Output: sh: 1: exec: <omitted>/mongod: Text file busy
+    [SuppressMessage("Usage", "CA2249:Consider using \'string.Contains\' instead of \'string.IndexOf\'", Justification = "Not worth it due to multi-targeting")]
+    internal static bool IsTextFileBusy(Exception ex)
+    {
+        return ex is Win32Exception or EphemeralMongoException { ProcessExitCode: not null } && ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private string[] BuildMongodArguments()
