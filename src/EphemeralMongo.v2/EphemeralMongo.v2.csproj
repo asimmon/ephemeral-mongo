@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="..\EphemeralMongo\*.cs" />
     <Compile Include="..\EphemeralMongo\Download\*.cs" Link="Download\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\EphemeralMongo\KillOnParentExit\*.cs" Link="KillOnParentExit\%(RecursiveDir)%(Filename)%(Extension)" />
 
     <AdditionalFiles Include="..\EphemeralMongo\*.txt" />
 

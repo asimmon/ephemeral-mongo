@@ -7,7 +7,7 @@ using Windows.Win32.Security;
 using Windows.Win32.System.JobObjects;
 using Microsoft.Win32.SafeHandles;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 // The current process is assigned to a job object, see: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
 // This can't be undone, so it also applies to MongoDB processes started afterward by runners that disabled it.
@@ -26,7 +26,7 @@ internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrat
         }
         catch (Win32Exception ex)
         {
-            throw new EphemeralMongoException($"An error occurred trying to assign the current process to a job object. {KillOnParentExit.DisableHint}", ex);
+            throw new EphemeralMongoException($"An error occurred trying to assign the current process to a job object. {KillOnParentExitStrategies.DisableHint}", ex);
         }
     }
 

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 internal sealed class Net11KillOnParentExitStrategy(PropertyInfo killOnParentExitProperty) : IKillOnParentExitStrategy
 {
@@ -19,8 +19,8 @@ internal sealed class Net11KillOnParentExitStrategy(PropertyInfo killOnParentExi
     public string GetTroubleshootingMessage(int exitCode, string output)
     {
         // On Linux, the parent death signal is SIGKILL
-        var mightBeRelated = exitCode == KillOnParentExit.SigkillExitCode && RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+        var mightBeRelated = exitCode == KillOnParentExitStrategies.SigkillExitCode && RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
-        return mightBeRelated ? " " + KillOnParentExit.DisableHint : string.Empty;
+        return mightBeRelated ? " " + KillOnParentExitStrategies.DisableHint : string.Empty;
     }
 }

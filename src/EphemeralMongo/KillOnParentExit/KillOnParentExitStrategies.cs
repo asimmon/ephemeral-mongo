@@ -1,14 +1,14 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 // Kills MongoDB processes when the current process exits, even if it crashes or is killed, so they don't outlive an interrupted test run:
 // - .NET 11 and later on Windows and Linux: ProcessStartInfo.KillOnParentExit
 // - Windows: a job object
 // - Linux: setpriv, a port of the .NET 11 implementation
 // - macOS, and Linux without setpriv: a watchdog shell. .NET has no equivalent on macOS, see: https://github.com/dotnet/runtime/issues/101985
-internal static class KillOnParentExit
+internal static class KillOnParentExitStrategies
 {
     // On Unix, .NET reports the exit code of a process terminated by a signal as 128 + the signal number
     internal const int SigkillExitCode = 128 + 9;

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 // A port of the Linux implementation of ProcessStartInfo.KillOnParentExit from .NET 11, see: https://github.com/dotnet/runtime/pull/127112
 // Managed code can't call prctl(PR_SET_PDEATHSIG) between fork and exec, so MongoDB processes are executed through "setpriv --pdeathsig KILL".
@@ -86,15 +86,15 @@ internal sealed class SetprivKillOnParentExitStrategy : IKillOnParentExitStrateg
 
         if (request.Exception != null)
         {
-            throw new EphemeralMongoException($"An error occurred trying to start process '{executablePath}' through '{SetprivFileName}'. {KillOnParentExit.DisableHint}", request.Exception.SourceException);
+            throw new EphemeralMongoException($"An error occurred trying to start process '{executablePath}' through '{SetprivFileName}'. {KillOnParentExitStrategies.DisableHint}", request.Exception.SourceException);
         }
     }
 
     public string GetTroubleshootingMessage(int exitCode, string output)
     {
-        var mightBeRelated = exitCode == KillOnParentExit.SigkillExitCode || HasSetprivOrShellError(output);
+        var mightBeRelated = exitCode == KillOnParentExitStrategies.SigkillExitCode || HasSetprivOrShellError(output);
 
-        return mightBeRelated ? " " + KillOnParentExit.DisableHint : string.Empty;
+        return mightBeRelated ? " " + KillOnParentExitStrategies.DisableHint : string.Empty;
     }
 
     private static bool HasSetprivOrShellError(string output)

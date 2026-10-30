@@ -1,4 +1,5 @@
 using EphemeralMongo;
+using EphemeralMongo.KillOnParentExit;
 using EphemeralMongo.Tests;
 
 // Started and killed by KillOnParentExitIntegrationTests: <data directory> <mongod PID file path> [--watchdog]
@@ -7,7 +8,7 @@ var pidFilePath = args[1];
 
 if (args.Contains("--watchdog"))
 {
-    KillOnParentExit.StrategyOverride = new WatchdogKillOnParentExitStrategy();
+    KillOnParentExitStrategies.StrategyOverride = new WatchdogKillOnParentExitStrategy();
 }
 
 using var runner = await MongoRunner.RunAsync(new MongoRunnerOptions

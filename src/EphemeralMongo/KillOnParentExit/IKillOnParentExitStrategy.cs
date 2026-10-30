@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 internal interface IKillOnParentExitStrategy
 {

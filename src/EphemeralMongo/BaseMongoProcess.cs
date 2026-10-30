@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using EphemeralMongo.KillOnParentExit;
 
 namespace EphemeralMongo;
 
@@ -30,7 +31,7 @@ internal abstract class BaseMongoProcess : IMongoProcess
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        this._killOnParentExit = KillOnParentExit.Configure(processStartInfo, options.KillMongoProcessesWhenCurrentProcessExits);
+        this._killOnParentExit = KillOnParentExitStrategies.Configure(processStartInfo, options.KillMongoProcessesWhenCurrentProcessExits);
 
         this.Process = new Process
         {

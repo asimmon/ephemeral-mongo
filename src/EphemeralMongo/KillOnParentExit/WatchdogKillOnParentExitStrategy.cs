@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 
-namespace EphemeralMongo;
+namespace EphemeralMongo.KillOnParentExit;
 
 // A shell started once receives the PID of each MongoDB process on its standard input, and "-<pid>" when it exits.
 // When the current process exits, even if killed, the shell reads EOF and kills the remaining ones.
@@ -74,9 +74,9 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
 
     public string GetTroubleshootingMessage(int exitCode, string output)
     {
-        var mightBeRelated = exitCode == KillOnParentExit.SigkillExitCode;
+        var mightBeRelated = exitCode == KillOnParentExitStrategies.SigkillExitCode;
 
-        return mightBeRelated ? " " + KillOnParentExit.DisableHint : string.Empty;
+        return mightBeRelated ? " " + KillOnParentExitStrategies.DisableHint : string.Empty;
     }
 
     // Only used in tests, as the watchdog must live as long as the current process
@@ -122,7 +122,7 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
             catch (Exception ex)
             {
                 watchdog.Dispose();
-                throw new EphemeralMongoException($"An error occurred trying to start '{ShellPath}' to kill MongoDB processes when the current process exits. {KillOnParentExit.DisableHint}", ex);
+                throw new EphemeralMongoException($"An error occurred trying to start '{ShellPath}' to kill MongoDB processes when the current process exits. {KillOnParentExitStrategies.DisableHint}", ex);
             }
 
             this._watchdog = watchdog;

@@ -337,7 +337,7 @@ file static class ProcessStartRetry
             }
             // This exception rarely happens on Linux in CI during tests with high concurrency
             // System.ComponentModel.Win32Exception : An error occurred trying to start process '<omitted>/mongod' with working directory '<omitted>'. Text file busy
-            // When mongod is executed through setpriv (see KillOnParentExit), the shell fails instead and the error is reported as an unexpected process exit
+            // When mongod is executed through setpriv (see KillOnParentExitStrategies), the shell fails instead and the error is reported as an unexpected process exit
             catch (Win32Exception ex) when (ex.Message.IndexOf("text file busy", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 if (attempt == maxAttempts)

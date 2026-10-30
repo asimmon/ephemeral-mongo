@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using EphemeralMongo.KillOnParentExit;
 
 namespace EphemeralMongo.Tests;
 
@@ -10,7 +11,7 @@ public class KillOnParentExitTests
     [Fact]
     public void Strategy_Depends_On_Platform_And_Runtime()
     {
-        var strategy = KillOnParentExit.Strategy;
+        var strategy = KillOnParentExitStrategies.Strategy;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -54,9 +55,9 @@ public class KillOnParentExitTests
             Arguments = "--port 27017",
         };
 
-        var strategy = KillOnParentExit.Configure(processStartInfo, enabled: true);
+        var strategy = KillOnParentExitStrategies.Configure(processStartInfo, enabled: true);
 
-        Assert.Same(KillOnParentExit.Strategy, strategy);
+        Assert.Same(KillOnParentExitStrategies.Strategy, strategy);
 
         if (strategy is SetprivKillOnParentExitStrategy)
         {
@@ -87,7 +88,7 @@ public class KillOnParentExitTests
             Arguments = "--port 27017",
         };
 
-        var strategy = KillOnParentExit.Configure(processStartInfo, enabled: false);
+        var strategy = KillOnParentExitStrategies.Configure(processStartInfo, enabled: false);
 
         Assert.Same(NoKillOnParentExitStrategy.Instance, strategy);
         Assert.Equal("/path/to/mongod", processStartInfo.FileName);
@@ -138,7 +139,7 @@ public class KillOnParentExitTests
     [Fact]
     public void Process_Started_From_A_Thread_That_Exits_Is_Not_Killed()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || KillOnParentExit.Strategy is NoKillOnParentExitStrategy)
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || KillOnParentExitStrategies.Strategy is NoKillOnParentExitStrategy)
         {
             Assert.Skip("This test is specific to Linux, where the parent death signal is sent when the thread that forked the child exits");
         }
@@ -151,7 +152,7 @@ public class KillOnParentExitTests
             UseShellExecute = false,
         };
 
-        var strategy = KillOnParentExit.Configure(processStartInfo, enabled: true);
+        var strategy = KillOnParentExitStrategies.Configure(processStartInfo, enabled: true);
 
         using var process = new Process();
         process.StartInfo = processStartInfo;
@@ -331,7 +332,7 @@ public class KillOnParentExitTests
     private static void AssertKilled(Process process)
     {
         Assert.True(process.WaitForExit(milliseconds: 5000));
-        Assert.Equal(KillOnParentExit.SigkillExitCode, process.ExitCode);
+        Assert.Equal(KillOnParentExitStrategies.SigkillExitCode, process.ExitCode);
     }
 
     private static void TryKill(params Process[] processes)
