@@ -31,7 +31,9 @@
     <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
   </ItemGroup>
 
+  <!-- KillOnParentExitIntegrationTests runs this app with "dotnet EphemeralMongo.Tests.ParentProcess.dll". -->
+  <!-- Referencing it builds it and copies it to the output directory of the tests, along with the .runtimeconfig.json file required to run it. -->
   <ItemGroup Condition=" '$(TargetFramework)' != 'net472' ">
-    <ProjectReference Include="..\EphemeralMongo.TestHost\EphemeralMongo.TestHost.csproj" />
+    <ProjectReference Include="..\EphemeralMongo.Tests.ParentProcess\EphemeralMongo.Tests.ParentProcess.csproj" />
   </ItemGroup>
 </Project>

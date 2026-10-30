@@ -6,6 +6,9 @@ namespace EphemeralMongo.Tests;
 
 public class KillOnParentExitTests
 {
+    // These tests never start this mongod, it only shows up in command lines and error messages
+    private const string FakeMongodPath = "/fake/path/to/mongod";
+
     private static readonly bool IsNet11KillOnParentExitAvailable = typeof(ProcessStartInfo).GetProperty("KillOnParentExit") != null;
 
     [Fact]
@@ -51,7 +54,7 @@ public class KillOnParentExitTests
     {
         var processStartInfo = new ProcessStartInfo
         {
-            FileName = "/path/to/mongod",
+            FileName = FakeMongodPath,
             Arguments = "--port 27017",
         };
 
@@ -65,11 +68,11 @@ public class KillOnParentExitTests
 
             Assert.Equal("setpriv", processStartInfo.FileName);
             Assert.StartsWith("--pdeathsig KILL -- /bin/sh -c ", processStartInfo.Arguments);
-            Assert.EndsWith($" sh {currentProcess.Id} /path/to/mongod --port 27017", processStartInfo.Arguments);
+            Assert.EndsWith($" sh {currentProcess.Id} {FakeMongodPath} --port 27017", processStartInfo.Arguments);
         }
         else
         {
-            Assert.Equal("/path/to/mongod", processStartInfo.FileName);
+            Assert.Equal(FakeMongodPath, processStartInfo.FileName);
             Assert.Equal("--port 27017", processStartInfo.Arguments);
         }
 
@@ -84,14 +87,14 @@ public class KillOnParentExitTests
     {
         var processStartInfo = new ProcessStartInfo
         {
-            FileName = "/path/to/mongod",
+            FileName = FakeMongodPath,
             Arguments = "--port 27017",
         };
 
         var strategy = KillOnParentExitStrategies.Configure(processStartInfo, enabled: false);
 
         Assert.Same(NoKillOnParentExitStrategy.Instance, strategy);
-        Assert.Equal("/path/to/mongod", processStartInfo.FileName);
+        Assert.Equal(FakeMongodPath, processStartInfo.FileName);
         Assert.Equal("--port 27017", processStartInfo.Arguments);
 
         if (typeof(ProcessStartInfo).GetProperty("KillOnParentExit") is { } property)
@@ -111,19 +114,19 @@ public class KillOnParentExitTests
     }
 
     [Theory]
-    [InlineData("None", 137, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
-    [InlineData("JobObject", 137, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
-    [InlineData("Setpriv", 2, "sh: 1: exec: /path/to/mongod: Text file busy", true)]
-    [InlineData("Setpriv", 1, "setpriv: setresuid failed: Operation not permitted", true)]
-    [InlineData("Setpriv", 137, "", true)]
-    [InlineData("Setpriv", 1, "{\"t\":{\"$date\":\"2026-10-29T00:00:00.000Z\"},\"s\":\"E\",\"msg\":\"Address already in use\"}", false)]
-    [InlineData("Net11", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
-    [InlineData("Watchdog", 137, "", true)]
-    [InlineData("Watchdog", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
-    [InlineData("Watchdog", 0, "", false)]
-    public void GetTroubleshootingMessage_Explains_How_To_Disable_The_Feature_When_It_Might_Be_Related(string strategyName, int exitCode, string output, bool expectHint)
+    [InlineData(StrategyType.None, 137, $"sh: 1: exec: {FakeMongodPath}: Text file busy", false)]
+    [InlineData(StrategyType.JobObject, 137, $"sh: 1: exec: {FakeMongodPath}: Text file busy", false)]
+    [InlineData(StrategyType.Setpriv, 2, $"sh: 1: exec: {FakeMongodPath}: Text file busy", true)]
+    [InlineData(StrategyType.Setpriv, 1, "setpriv: setresuid failed: Operation not permitted", true)]
+    [InlineData(StrategyType.Setpriv, 137, "", true)]
+    [InlineData(StrategyType.Setpriv, 1, "{\"t\":{\"$date\":\"2026-10-29T00:00:00.000Z\"},\"s\":\"E\",\"msg\":\"Address already in use\"}", false)]
+    [InlineData(StrategyType.Net11, 2, $"sh: 1: exec: {FakeMongodPath}: Text file busy", false)]
+    [InlineData(StrategyType.Watchdog, 137, "", true)]
+    [InlineData(StrategyType.Watchdog, 2, $"sh: 1: exec: {FakeMongodPath}: Text file busy", false)]
+    [InlineData(StrategyType.Watchdog, 0, "", false)]
+    public void GetTroubleshootingMessage_Explains_How_To_Disable_The_Feature_When_It_Might_Be_Related(StrategyType strategyType, int exitCode, string output, bool expectHint)
     {
-        var message = CreateStrategy(strategyName).GetTroubleshootingMessage(exitCode, output);
+        var message = CreateStrategy(strategyType).GetTroubleshootingMessage(exitCode, output);
 
         AssertHint(expectHint, message);
     }
@@ -131,7 +134,7 @@ public class KillOnParentExitTests
     [Fact]
     public void GetTroubleshootingMessage_Mentions_Sigkill_With_Net11_Strategy_Only_On_Linux()
     {
-        var message = CreateStrategy("Net11").GetTroubleshootingMessage(137, string.Empty);
+        var message = CreateStrategy(StrategyType.Net11).GetTroubleshootingMessage(137, string.Empty);
 
         AssertHint(RuntimeInformation.IsOSPlatform(OSPlatform.Linux), message);
     }
@@ -176,6 +179,12 @@ public class KillOnParentExitTests
                 // The process might have already exited
             }
         }
+    }
+
+    [Fact]
+    public void Watchdog_Script_Has_Unix_Line_Endings()
+    {
+        Assert.DoesNotContain("\r", WatchdogKillOnParentExitStrategy.CreateWatchdogStartInfo().Arguments, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -350,16 +359,23 @@ public class KillOnParentExitTests
         }
     }
 
-    private static IKillOnParentExitStrategy CreateStrategy(string strategyName) => strategyName switch
+    public enum StrategyType
     {
-        "None" => NoKillOnParentExitStrategy.Instance,
-        "JobObject" => new JobObjectKillOnParentExitStrategy(),
-        "Setpriv" => new SetprivKillOnParentExitStrategy(),
-        "Watchdog" => new WatchdogKillOnParentExitStrategy(),
+        None,
+        JobObject,
+        Setpriv,
+        Net11,
+        Watchdog,
+    }
 
-        // The property is only used when configuring a process start info, which isn't the case here
-        "Net11" => new Net11KillOnParentExitStrategy(typeof(ProcessStartInfo).GetProperty(nameof(ProcessStartInfo.UseShellExecute))!),
-        _ => throw new ArgumentOutOfRangeException(nameof(strategyName)),
+    private static IKillOnParentExitStrategy CreateStrategy(StrategyType strategyType) => strategyType switch
+    {
+        StrategyType.None => NoKillOnParentExitStrategy.Instance,
+        StrategyType.JobObject => new JobObjectKillOnParentExitStrategy(),
+        StrategyType.Setpriv => new SetprivKillOnParentExitStrategy(),
+        StrategyType.Net11 => new Net11KillOnParentExitStrategy(),
+        StrategyType.Watchdog => new WatchdogKillOnParentExitStrategy(),
+        _ => throw new ArgumentOutOfRangeException(nameof(strategyType)),
     };
 
     private static void AssertHint(bool expectHint, string message)

@@ -21,7 +21,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests", "Eph
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.LatestDriver.Tests", "EphemeralMongo.LatestDriver.Tests\EphemeralMongo.LatestDriver.Tests.csproj", "{53F65B0A-83EB-43CD-B37B-4EEEBB007FCC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.TestHost", "EphemeralMongo.TestHost\EphemeralMongo.TestHost.csproj", "{27626708-2022-4CB4-8BE6-E56B183F818A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EphemeralMongo.Tests.ParentProcess", "EphemeralMongo.Tests.ParentProcess\EphemeralMongo.Tests.ParentProcess.csproj", "{27626708-2022-4CB4-8BE6-E56B183F818A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

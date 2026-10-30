@@ -21,7 +21,7 @@ internal sealed class SetprivKillOnParentExitStrategy : IKillOnParentExitStrateg
 
     private const int SetprivProbeTimeoutMs = 10_000;
 
-    private readonly Lazy<BlockingCollection<StartRequest>> _lazyStartRequests = new Lazy<BlockingCollection<StartRequest>>(StartForkThread);
+    private readonly Lazy<BlockingCollection<StartRequest>> _lazyStartRequests = new(StartForkThread);
 
     // --pdeathsig requires util-linux 2.33 (RHEL 8 ships 2.32), and minimal images like Alpine don't include setpriv
     public static bool IsAvailable()
@@ -120,7 +120,10 @@ internal sealed class SetprivKillOnParentExitStrategy : IKillOnParentExitStrateg
         return currentProcess.Id;
     }
 
-    // The parent death signal is sent when the thread that forked the child exits, so processes are forked from a thread that never exits
+    // On Linux, the parent death signal is sent when the thread that started the child process exits, not when the whole process exits.
+    // If MongoDB were started from an arbitrary thread, such as a thread pool thread that later exits, MongoDB would be killed too early.
+    // That's why every process is started from this dedicated thread, which lives as long as the current process.
+    // A Task wouldn't be a reliable replacement: there's no guarantee about which thread runs it, and that thread could exit.
     private static BlockingCollection<StartRequest> StartForkThread()
     {
         var startRequests = new BlockingCollection<StartRequest>();
@@ -159,7 +162,7 @@ internal sealed class SetprivKillOnParentExitStrategy : IKillOnParentExitStrateg
     {
         public Process Process { get; } = process;
 
-        public ManualResetEventSlim Completed { get; } = new ManualResetEventSlim(initialState: false);
+        public ManualResetEventSlim Completed { get; } = new(initialState: false);
 
         public ExceptionDispatchInfo? Exception { get; set; }
     }

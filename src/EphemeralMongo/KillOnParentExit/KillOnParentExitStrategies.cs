@@ -16,7 +16,7 @@ internal static class KillOnParentExitStrategies
     internal const string DisableHint = "MongoDB processes are started in a way that kills them when the current process exits, which might be related to this failure. " +
         $"If so, disable this behavior with '{nameof(MongoRunnerOptions)}.{nameof(MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits)} = false'.";
 
-    private static readonly Lazy<IKillOnParentExitStrategy> LazyStrategy = new Lazy<IKillOnParentExitStrategy>(CreateStrategy);
+    private static readonly Lazy<IKillOnParentExitStrategy> LazyStrategy = new(CreateStrategy);
 
     internal static IKillOnParentExitStrategy Strategy => StrategyOverride ?? LazyStrategy.Value;
 
@@ -34,12 +34,9 @@ internal static class KillOnParentExitStrategies
 
     private static IKillOnParentExitStrategy CreateStrategy()
     {
-        // https://learn.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.killonparentexit
-        var net11Property = typeof(ProcessStartInfo).GetProperty("KillOnParentExit", typeof(bool));
-
-        if (net11Property != null && (IsWindows() || IsLinux()))
+        if (Net11KillOnParentExitStrategy.IsAvailable() && (IsWindows() || IsLinux()))
         {
-            return new Net11KillOnParentExitStrategy(net11Property);
+            return new Net11KillOnParentExitStrategy();
         }
 
         if (IsWindows() && !IsNetFramework())

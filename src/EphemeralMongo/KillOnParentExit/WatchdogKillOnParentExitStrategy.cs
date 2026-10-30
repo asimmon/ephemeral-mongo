@@ -6,46 +6,14 @@ namespace EphemeralMongo.KillOnParentExit;
 // A shell started once receives the PID of each MongoDB process on its standard input, and "-<pid>" when it exits.
 // When the current process exits, even if killed, the shell reads EOF and kills the remaining ones.
 // It ignores the signals sent to the whole process group, like Ctrl+C, which would otherwise kill it along with the current process.
-internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrategy, IDisposable
+// The log file path lets tests check what the watchdog did, see watchdog.sh
+internal sealed class WatchdogKillOnParentExitStrategy(string? logFilePath = null) : IKillOnParentExitStrategy, IDisposable
 {
     private const string ShellPath = "/bin/sh";
 
-    // Start times guard against PID reuse. On Linux, it's the 22nd field of /proc/<pid>/stat, after the command name which can contain spaces.
-    // PIDs starting with 0 are ignored, as "kill -9 0" kills the whole process group.
-    private const string WatchdogScript =
-        "trap '' HUP INT QUIT TERM\n" +
-        "exec >/dev/null 2>&1\n" +
-        "read_start_time() {\n" +
-        "  start_time=\n" +
-        "  if [ -d /proc/self ]; then\n" +
-        "    read -r stat < \"/proc/$1/stat\" || return 1\n" +
-        "    set -- ${stat##*\") \"}\n" +
-        "    [ $# -ge 20 ] || return 1\n" +
-        "    shift 19\n" +
-        "    start_time=$1\n" +
-        "  else\n" +
-        "    start_time=$(ps -o lstart= -p \"$1\")\n" +
-        "  fi\n" +
-        "  [ -n \"$start_time\" ]\n" +
-        "}\n" +
-        "pids=\n" +
-        "while read -r line; do\n" +
-        "  pid=${line#-}\n" +
-        "  case $pid in ''|0*|*[!0-9]*) continue ;; esac\n" +
-        "  remaining=\n" +
-        "  for p in $pids; do [ \"$p\" = \"$pid\" ] || remaining=\"$remaining $p\"; done\n" +
-        "  pids=$remaining\n" +
-        "  if [ \"$pid\" = \"$line\" ] && read_start_time \"$pid\"; then\n" +
-        "    pids=\"$pids $pid\"\n" +
-        "    eval \"start_time_$pid=\\$start_time\"\n" +
-        "  fi\n" +
-        "done\n" +
-        "for pid in $pids; do\n" +
-        "  eval \"expected_start_time=\\$start_time_$pid\"\n" +
-        "  read_start_time \"$pid\" && [ \"$start_time\" = \"$expected_start_time\" ] && kill -9 \"$pid\"\n" +
-        "done\n";
+    private static readonly string WatchdogScript = ReadWatchdogScript();
 
-    private readonly object _watchdogLock = new object();
+    private readonly object _watchdogLock = new();
     private Process? _watchdog;
     private StreamWriter? _watchdogInput;
 
@@ -95,14 +63,25 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
         }
     }
 
-    internal static ProcessStartInfo CreateWatchdogStartInfo() => new ProcessStartInfo
+    // The argument after the script is its name ($0), followed by its arguments ($1, ...)
+    internal static ProcessStartInfo CreateWatchdogStartInfo(string? logFilePath = null) => new()
     {
         FileName = ShellPath,
-        Arguments = $"-c {ProcessArgument.Escape(WatchdogScript)} ephemeral-mongo-watchdog",
+        Arguments = $"-c {ProcessArgument.Escape(WatchdogScript)} ephemeral-mongo-watchdog" + (logFilePath == null ? string.Empty : " " + ProcessArgument.Escape(logFilePath)),
         CreateNoWindow = true,
         UseShellExecute = false,
         RedirectStandardInput = true,
     };
+
+    // Line endings are normalized in case the script was checked out with CRLF, which the shell doesn't understand
+    private static string ReadWatchdogScript()
+    {
+        using var stream = typeof(WatchdogKillOnParentExitStrategy).Assembly.GetManifestResourceStream("EphemeralMongo.KillOnParentExit.watchdog.sh")
+                           ?? throw new InvalidOperationException("The embedded watchdog script was not found");
+        using var reader = new StreamReader(stream);
+
+        return reader.ReadToEnd().Replace("\r\n", "\n");
+    }
 
     private StreamWriter GetOrStartWatchdog()
     {
@@ -113,7 +92,7 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
                 return this._watchdogInput;
             }
 
-            var watchdog = new Process { StartInfo = CreateWatchdogStartInfo() };
+            var watchdog = new Process { StartInfo = CreateWatchdogStartInfo(logFilePath) };
 
             try
             {

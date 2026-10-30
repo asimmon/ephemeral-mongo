@@ -20,6 +20,7 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
         var directory = Path.Combine(Path.GetTempPath(), "ephemeral-mongo-kill-on-parent-exit-" + Path.GetRandomFileName());
         var dataDirectory = Path.Combine(directory, "data");
         var pidFilePath = Path.Combine(directory, "mongod.pid");
+        var watchdogLogFilePath = Path.Combine(directory, "watchdog.log");
         Directory.CreateDirectory(dataDirectory);
 
         var startInfo = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
@@ -29,25 +30,26 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
             RedirectStandardError = true,
         };
 
-        startInfo.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "EphemeralMongo.TestHost.dll"));
+        startInfo.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "EphemeralMongo.Tests.ParentProcess.dll"));
         startInfo.ArgumentList.Add(dataDirectory);
         startInfo.ArgumentList.Add(pidFilePath);
 
         if (useWatchdog)
         {
             startInfo.ArgumentList.Add("--watchdog");
+            startInfo.ArgumentList.Add(watchdogLogFilePath);
         }
 
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var host = new Process { StartInfo = startInfo };
-        host.OutputDataReceived += (_, args) =>
+        using var parentProcess = new Process { StartInfo = startInfo };
+        parentProcess.OutputDataReceived += (_, args) =>
         {
             if (args.Data == "READY")
             {
                 ready.TrySetResult();
             }
         };
-        host.ErrorDataReceived += (_, args) =>
+        parentProcess.ErrorDataReceived += (_, args) =>
         {
             if (args.Data != null)
             {
@@ -59,28 +61,44 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
 
         try
         {
-            host.Start();
-            host.BeginOutputReadLine();
-            host.BeginErrorReadLine();
+            parentProcess.Start();
+            parentProcess.BeginOutputReadLine();
+            parentProcess.BeginErrorReadLine();
 
             var cancellationToken = TestContext.Current.CancellationToken;
-            await Task.WhenAny(ready.Task, host.WaitForExitAsync(cancellationToken)).WaitAsync(TimeSpan.FromMinutes(3), cancellationToken);
-            Assert.True(ready.Task.IsCompleted, "The test host exited before starting mongod");
+            await Task.WhenAny(ready.Task, parentProcess.WaitForExitAsync(cancellationToken)).WaitAsync(TimeSpan.FromMinutes(3), cancellationToken);
+            Assert.True(ready.Task.IsCompleted, "The parent process exited before starting mongod");
 
             var mongodProcessId = int.Parse(await File.ReadAllTextAsync(pidFilePath, cancellationToken), CultureInfo.InvariantCulture);
             mongod = Process.GetProcessById(mongodProcessId);
 
-            // Not waiting for the host to exit, which also waits for its output to be closed, including by a mongod that wasn't killed
-            host.Kill();
+            // We don't wait for the parent process to exit after killing it. WaitForExit also waits until its redirected output is closed,
+            // and a mongod that survived would keep it open, so the test would hang instead of failing.
+            parentProcess.Kill();
 
             var mongodExit = mongod.WaitForExitAsync(cancellationToken);
             await Task.WhenAny(mongodExit, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
+
+            string[] watchdogLogLines = [];
+
+            if (useWatchdog)
+            {
+                watchdogLogLines = await File.ReadAllLinesAsync(watchdogLogFilePath, cancellationToken);
+                testOutputHelper.WriteLine(string.Join(Environment.NewLine, watchdogLogLines));
+            }
+
             Assert.True(mongodExit.IsCompleted, $"mongod {mongodProcessId} is still running after its parent process was killed");
+
+            // Makes sure the watchdog is what killed mongod
+            if (useWatchdog)
+            {
+                Assert.Contains($"Killing {mongodProcessId}", watchdogLogLines);
+            }
         }
         finally
         {
             TryKill(mongod);
-            TryKill(host);
+            TryKill(parentProcess);
             mongod?.Dispose();
             TryDeleteDirectory(directory);
         }
@@ -107,7 +125,7 @@ public class KillOnParentExitIntegrationTests(ITestOutputHelper testOutputHelper
         }
         catch
         {
-            // Left to the operating system, as for any temporary directory
+            // Not a big deal, the operating system eventually cleans up temporary directories
         }
     }
 }

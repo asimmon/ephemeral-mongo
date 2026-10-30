@@ -18,6 +18,8 @@
 
     <AdditionalFiles Include="..\EphemeralMongo\*.txt" />
 
+    <EmbeddedResource Include="..\EphemeralMongo\KillOnParentExit\watchdog.sh" Link="KillOnParentExit\watchdog.sh" LogicalName="EphemeralMongo.KillOnParentExit.watchdog.sh" />
+
     <InternalsVisibleTo Include="EphemeralMongo.v2.Tests" />
 
     <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />

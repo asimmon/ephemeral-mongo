@@ -4,11 +4,16 @@ using System.Runtime.InteropServices;
 
 namespace EphemeralMongo.KillOnParentExit;
 
-internal sealed class Net11KillOnParentExitStrategy(PropertyInfo killOnParentExitProperty) : IKillOnParentExitStrategy
+internal sealed class Net11KillOnParentExitStrategy : IKillOnParentExitStrategy
 {
+    // https://learn.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.killonparentexit
+    private static readonly PropertyInfo? KillOnParentExitProperty = typeof(ProcessStartInfo).GetProperty("KillOnParentExit", typeof(bool));
+
+    public static bool IsAvailable() => KillOnParentExitProperty != null;
+
     public void Configure(ProcessStartInfo processStartInfo)
     {
-        killOnParentExitProperty.SetValue(processStartInfo, true);
+        KillOnParentExitProperty!.SetValue(processStartInfo, true);
     }
 
     public void Start(Process process, string executablePath)

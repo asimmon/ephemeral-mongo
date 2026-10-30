@@ -15,7 +15,7 @@ namespace EphemeralMongo.KillOnParentExit;
 [SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "This strategy is only used on Windows")]
 internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrategy
 {
-    private static readonly object CreateJobObjectLock = new object();
+    private static readonly object CreateJobObjectLock = new();
     private static SafeFileHandle? _jobObjectHandle;
 
     public void Configure(ProcessStartInfo processStartInfo)
@@ -60,7 +60,7 @@ internal sealed class JobObjectKillOnParentExitStrategy : IKillOnParentExitStrat
             {
                 bInheritHandle = false,
                 lpSecurityDescriptor = IntPtr.Zero.ToPointer(),
-                nLength = (uint)Marshal.SizeOf(typeof(SECURITY_ATTRIBUTES)),
+                nLength = (uint)Marshal.SizeOf<SECURITY_ATTRIBUTES>(),
             };
 
             SafeFileHandle? jobHandle = null;

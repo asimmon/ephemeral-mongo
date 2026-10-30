@@ -13,9 +13,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="EphemeralMongo.Tests" />
-    <InternalsVisibleTo Include="EphemeralMongo.TestHost" />
+    <InternalsVisibleTo Include="EphemeralMongo.Tests.ParentProcess" />
 
     <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" Pack="true" PackagePath="\" />
+
+    <EmbeddedResource Include="KillOnParentExit\watchdog.sh" LogicalName="EphemeralMongo.KillOnParentExit.watchdog.sh" />
   </ItemGroup>
 
   <ItemGroup>
