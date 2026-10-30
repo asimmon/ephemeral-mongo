@@ -5,7 +5,7 @@ namespace EphemeralMongo.Tests;
 
 public class KillOnParentExitTests
 {
-    private static readonly bool IsRuntimeKillOnParentExitAvailable = typeof(ProcessStartInfo).GetProperty("KillOnParentExit") != null;
+    private static readonly bool IsNet11KillOnParentExitAvailable = typeof(ProcessStartInfo).GetProperty("KillOnParentExit") != null;
 
     [Fact]
     public void Strategy_Depends_On_Platform_And_Runtime()
@@ -18,9 +18,9 @@ public class KillOnParentExitTests
             {
                 Assert.IsType<NoKillOnParentExitStrategy>(strategy);
             }
-            else if (IsRuntimeKillOnParentExitAvailable)
+            else if (IsNet11KillOnParentExitAvailable)
             {
-                Assert.IsType<RuntimeKillOnParentExitStrategy>(strategy);
+                Assert.IsType<Net11KillOnParentExitStrategy>(strategy);
             }
             else
             {
@@ -29,9 +29,9 @@ public class KillOnParentExitTests
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            if (IsRuntimeKillOnParentExitAvailable)
+            if (IsNet11KillOnParentExitAvailable)
             {
-                Assert.IsType<RuntimeKillOnParentExitStrategy>(strategy);
+                Assert.IsType<Net11KillOnParentExitStrategy>(strategy);
             }
             else
             {
@@ -72,7 +72,7 @@ public class KillOnParentExitTests
             Assert.Equal("--port 27017", processStartInfo.Arguments);
         }
 
-        if (strategy is RuntimeKillOnParentExitStrategy)
+        if (strategy is Net11KillOnParentExitStrategy)
         {
             Assert.True((bool)typeof(ProcessStartInfo).GetProperty("KillOnParentExit")!.GetValue(processStartInfo)!);
         }
@@ -116,7 +116,7 @@ public class KillOnParentExitTests
     [InlineData("Setpriv", 1, "setpriv: setresuid failed: Operation not permitted", true)]
     [InlineData("Setpriv", 137, "", true)]
     [InlineData("Setpriv", 1, "{\"t\":{\"$date\":\"2026-10-29T00:00:00.000Z\"},\"s\":\"E\",\"msg\":\"Address already in use\"}", false)]
-    [InlineData("Runtime", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
+    [InlineData("Net11", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
     [InlineData("Watchdog", 137, "", true)]
     [InlineData("Watchdog", 2, "sh: 1: exec: /path/to/mongod: Text file busy", false)]
     [InlineData("Watchdog", 0, "", false)]
@@ -128,9 +128,9 @@ public class KillOnParentExitTests
     }
 
     [Fact]
-    public void GetTroubleshootingMessage_Mentions_Sigkill_With_Runtime_Strategy_Only_On_Linux()
+    public void GetTroubleshootingMessage_Mentions_Sigkill_With_Net11_Strategy_Only_On_Linux()
     {
-        var message = CreateStrategy("Runtime").GetTroubleshootingMessage(137, string.Empty);
+        var message = CreateStrategy("Net11").GetTroubleshootingMessage(137, string.Empty);
 
         AssertHint(RuntimeInformation.IsOSPlatform(OSPlatform.Linux), message);
     }
@@ -331,7 +331,7 @@ public class KillOnParentExitTests
     private static void AssertKilled(Process process)
     {
         Assert.True(process.WaitForExit(milliseconds: 5000));
-        Assert.Equal(RuntimeKillOnParentExitStrategy.SigkillExitCode, process.ExitCode);
+        Assert.Equal(KillOnParentExit.SigkillExitCode, process.ExitCode);
     }
 
     private static void TryKill(params Process[] processes)
@@ -357,7 +357,7 @@ public class KillOnParentExitTests
         "Watchdog" => new WatchdogKillOnParentExitStrategy(),
 
         // The property is only used when configuring a process start info, which isn't the case here
-        "Runtime" => new RuntimeKillOnParentExitStrategy(typeof(ProcessStartInfo).GetProperty(nameof(ProcessStartInfo.UseShellExecute))!),
+        "Net11" => new Net11KillOnParentExitStrategy(typeof(ProcessStartInfo).GetProperty(nameof(ProcessStartInfo.UseShellExecute))!),
         _ => throw new ArgumentOutOfRangeException(nameof(strategyName)),
     };
 

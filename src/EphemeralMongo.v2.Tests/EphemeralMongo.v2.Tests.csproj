@@ -17,6 +17,8 @@
     <Using Include="Xunit" />
 
     <Compile Include="..\EphemeralMongo.Tests\*.cs" />
+    <!-- The test host references the other assembly named EphemeralMongo, and the strategies are the same source files anyway -->
+    <Compile Remove="..\EphemeralMongo.Tests\KillOnParentExitIntegrationTests.cs" />
 
     <Content Include="..\EphemeralMongo.Tests\xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -15,7 +15,7 @@ internal abstract class BaseMongoProcess : IMongoProcess
 
         var joinedArguments = string.Join(" ", arguments);
 
-        // The process start info might be modified to kill the process when the current process exits, so we keep the original command for error messages
+        // Not taken from the start info, which can be changed to start the process through setpriv
         this.ProcessDescription = $"{executablePath} {joinedArguments}";
 
         var processStartInfo = new ProcessStartInfo
@@ -30,7 +30,6 @@ internal abstract class BaseMongoProcess : IMongoProcess
             StandardErrorEncoding = Encoding.UTF8,
         };
 
-        // Ensures the process is killed when the current process exits, even if it crashes or is killed
         this._killOnParentExit = KillOnParentExit.Configure(processStartInfo, options.KillMongoProcessesWhenCurrentProcessExits);
 
         this.Process = new Process
@@ -54,7 +53,6 @@ internal abstract class BaseMongoProcess : IMongoProcess
         this._killOnParentExit.Start(this.Process, this._executablePath);
     }
 
-    // Tells users how to disable killing MongoDB processes when the current process exits, if it might have caused this process to fail
     protected string GetKillOnParentExitTroubleshootingMessage(string output)
     {
         return this._killOnParentExit.GetTroubleshootingMessage(this.Process.ExitCode, output);

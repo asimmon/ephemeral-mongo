@@ -3,42 +3,30 @@ using System.Globalization;
 
 namespace EphemeralMongo;
 
-// Used on macOS, and on Linux before .NET 11 when setpriv isn't available. Neither job objects nor prctl(PR_SET_PDEATHSIG) exist on macOS.
-//
-// A single long-lived shell, the watchdog, is started with a redirected standard input, and the PID of each started MongoDB process is written to it.
-// When the current process exits for any reason, including SIGKILL, the kernel closes its end of the pipe, so the watchdog reads EOF
-// and kills the MongoDB processes it still knows about. MongoDB processes are started as usual and remain direct children of the current process.
-//
-// When a MongoDB process exits, its PID is written again with a "-" prefix so the watchdog forgets it. Because PIDs are reused, the watchdog
-// also records the start time of each process and only kills processes whose start time hasn't changed. This also covers processes whose exit
-// couldn't be reported before the current process died.
-//
-// The watchdog ignores SIGHUP, SIGINT, SIGQUIT and SIGTERM. It belongs to the same process group as the current process, so pressing Ctrl+C
-// in a terminal would otherwise kill it along with the current process, and the MongoDB processes would keep running.
-//
-// A MongoDB process isn't killed if the current process dies after starting it but before writing its PID to the watchdog.
+// A shell started once receives the PID of each MongoDB process on its standard input, and "-<pid>" when it exits.
+// When the current process exits, even if killed, the shell reads EOF and kills the remaining ones.
+// It ignores the signals sent to the whole process group, like Ctrl+C, which would otherwise kill it along with the current process.
 internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrategy, IDisposable
 {
     private const string ShellPath = "/bin/sh";
 
-    // "identify" sets $ident to the start time of the process $1, from /proc/<pid>/stat on Linux (the 22nd field, the 20th after the command name
-    // which can contain spaces and parentheses) or from ps on macOS. Unknown PIDs and malformed lines are ignored, and nothing is printed.
-    // PIDs starting with 0 are rejected, as "kill -9 0" would kill the whole process group.
+    // Start times guard against PID reuse. On Linux, it's the 22nd field of /proc/<pid>/stat, after the command name which can contain spaces.
+    // PIDs starting with 0 are ignored, as "kill -9 0" kills the whole process group.
     private const string WatchdogScript =
         "trap '' HUP INT QUIT TERM\n" +
         "exec >/dev/null 2>&1\n" +
-        "identify() {\n" +
-        "  ident=\n" +
+        "read_start_time() {\n" +
+        "  start_time=\n" +
         "  if [ -d /proc/self ]; then\n" +
         "    read -r stat < \"/proc/$1/stat\" || return 1\n" +
         "    set -- ${stat##*\") \"}\n" +
         "    [ $# -ge 20 ] || return 1\n" +
         "    shift 19\n" +
-        "    ident=$1\n" +
+        "    start_time=$1\n" +
         "  else\n" +
-        "    ident=$(ps -o lstart= -p \"$1\")\n" +
+        "    start_time=$(ps -o lstart= -p \"$1\")\n" +
         "  fi\n" +
-        "  [ -n \"$ident\" ]\n" +
+        "  [ -n \"$start_time\" ]\n" +
         "}\n" +
         "pids=\n" +
         "while read -r line; do\n" +
@@ -47,14 +35,14 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
         "  remaining=\n" +
         "  for p in $pids; do [ \"$p\" = \"$pid\" ] || remaining=\"$remaining $p\"; done\n" +
         "  pids=$remaining\n" +
-        "  if [ \"$pid\" = \"$line\" ] && identify \"$pid\"; then\n" +
+        "  if [ \"$pid\" = \"$line\" ] && read_start_time \"$pid\"; then\n" +
         "    pids=\"$pids $pid\"\n" +
-        "    eval \"ident_$pid=\\$ident\"\n" +
+        "    eval \"start_time_$pid=\\$start_time\"\n" +
         "  fi\n" +
         "done\n" +
         "for pid in $pids; do\n" +
-        "  eval \"expected=\\$ident_$pid\"\n" +
-        "  identify \"$pid\" && [ \"$ident\" = \"$expected\" ] && kill -9 \"$pid\"\n" +
+        "  eval \"expected_start_time=\\$start_time_$pid\"\n" +
+        "  read_start_time \"$pid\" && [ \"$start_time\" = \"$expected_start_time\" ] && kill -9 \"$pid\"\n" +
         "done\n";
 
     private readonly object _watchdogLock = new object();
@@ -71,14 +59,13 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
 
         process.Start();
 
-        // The process might exit before we subscribe to the Exited event, which is why we also check HasExited after writing its PID.
-        // Forgetting a process twice is harmless.
         var processId = process.Id.ToString(CultureInfo.InvariantCulture);
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => this.WriteLine(watchdogInput, "-" + processId);
 
         this.WriteLine(watchdogInput, processId);
 
+        // In case it exited before we subscribed to the Exited event
         if (process.HasExited)
         {
             this.WriteLine(watchdogInput, "-" + processId);
@@ -87,14 +74,12 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
 
     public string GetTroubleshootingMessage(int exitCode, string output)
     {
-        // The MongoDB process might have been killed by the watchdog (or by something else, like the OOM killer)
-        var mightBeRelated = exitCode == RuntimeKillOnParentExitStrategy.SigkillExitCode;
+        var mightBeRelated = exitCode == KillOnParentExit.SigkillExitCode;
 
         return mightBeRelated ? " " + KillOnParentExit.DisableHint : string.Empty;
     }
 
-    // Only used in tests, as the watchdog must live as long as the current process.
-    // Closing its standard input has the same effect as the current process exiting.
+    // Only used in tests, as the watchdog must live as long as the current process
     public void Dispose()
     {
         lock (this._watchdogLock)
@@ -109,6 +94,15 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
             }
         }
     }
+
+    internal static ProcessStartInfo CreateWatchdogStartInfo() => new ProcessStartInfo
+    {
+        FileName = ShellPath,
+        Arguments = $"-c {ProcessArgument.Escape(WatchdogScript)} ephemeral-mongo-watchdog",
+        CreateNoWindow = true,
+        UseShellExecute = false,
+        RedirectStandardInput = true,
+    };
 
     private StreamWriter GetOrStartWatchdog()
     {
@@ -138,16 +132,6 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
         }
     }
 
-    // Internal for tests, which write to the watchdog directly
-    internal static ProcessStartInfo CreateWatchdogStartInfo() => new ProcessStartInfo
-    {
-        FileName = ShellPath,
-        Arguments = $"-c {ProcessArgument.Escape(WatchdogScript)} ephemeral-mongo-watchdog",
-        CreateNoWindow = true,
-        UseShellExecute = false,
-        RedirectStandardInput = true,
-    };
-
     private void WriteLine(StreamWriter watchdogInput, string line)
     {
         lock (this._watchdogLock)
@@ -159,7 +143,7 @@ internal sealed class WatchdogKillOnParentExitStrategy : IKillOnParentExitStrate
             }
             catch (Exception ex) when (ex is IOException or ObjectDisposedException)
             {
-                // The watchdog was killed by someone else (or disposed in tests), there's nothing more we can do
+                // The watchdog was killed, there's nothing more we can do
             }
         }
     }
