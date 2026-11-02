@@ -30,4 +30,8 @@
   <ItemGroup>
     <ProjectReference Include="..\EphemeralMongo\EphemeralMongo.csproj" />
   </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' != 'net472' ">
+    <ProjectReference Include="..\EphemeralMongo.OrphanTestHost\EphemeralMongo.OrphanTestHost.csproj" />
+  </ItemGroup>
 </Project>

@@ -178,6 +178,12 @@ public sealed class MongoRunnerOptions
     // Useful for testing data directories cleanup
     internal string? RootDataDirectoryPath { get; set; }
 
+    // Set by the runner on its own copy of the options once the data directory is known, so the Unix process guardian
+    // can tell which process is ours and whether it may delete the directory. Never copied between runners.
+    internal string? ResolvedDataDirectory { get; set; }
+
+    internal bool IsDataDirectoryOwnedByRunner { get; set; }
+
     private static Exception? CheckDirectoryPathFormat(string? path)
     {
         if (path == null)

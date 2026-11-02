@@ -86,6 +86,9 @@ public sealed class MongoRunner
 
             this.CleanupOldDataDirectories();
 
+            this._options.ResolvedDataDirectory = this._dataDirectory;
+            this._options.IsDataDirectoryOwnedByRunner = this.IsDataDirectoryOwnedByRunner();
+
             // A random port is free when picked, but another process can take it before mongod binds to it,
             // which is likely when many instances start in parallel, such as in test suites
             var isRandomPort = this._options.MongoPort == null;
@@ -230,6 +233,11 @@ public sealed class MongoRunner
         }
     }
 
+    private bool IsDataDirectoryOwnedByRunner()
+    {
+        return this._options.DataDirectory == null && this._options.RootDataDirectoryPath == DefaultRootDataDirectory;
+    }
+
     private void Dispose(bool throwOnException)
     {
         var exceptions = new List<Exception>(1);
@@ -246,7 +254,7 @@ public sealed class MongoRunner
         try
         {
             // Do not dispose data directory if set from user input or the root data directory path was set for tests
-            if (this._dataDirectory != null && this._options.DataDirectory == null && this._options.RootDataDirectoryPath == DefaultRootDataDirectory)
+            if (this._dataDirectory != null && this.IsDataDirectoryOwnedByRunner())
             {
                 this._fileSystem.DeleteDirectory(this._dataDirectory);
             }

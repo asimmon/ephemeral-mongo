@@ -37,6 +37,24 @@ internal abstract class BaseMongoProcess : IMongoProcess
 
     protected Process Process { get; }
 
+    private UnixProcessGuardian? Guardian { get; set; }
+
+    // Called right after the process starts, before waiting for it to become ready, so that a host killed during
+    // startup does not leave the process behind either. Windows relies on the job object instead.
+    protected void OnMongodProcessStarted()
+    {
+        if (this.Guardian != null || !UnixProcessGuardian.IsSupported)
+        {
+            return;
+        }
+
+        var dataDirectory = this.Options.ResolvedDataDirectory;
+        var commandLineMarker = string.IsNullOrEmpty(dataDirectory) ? "mongod" : dataDirectory!;
+        var directoryToDelete = this.Options.IsDataDirectoryOwnedByRunner ? dataDirectory : null;
+
+        this.Guardian = UnixProcessGuardian.TryStart(this.Process.Id, directoryToDelete, commandLineMarker, this.Options.StandardErrorLogger);
+    }
+
     private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
     {
         if (this.Options.StandardOutputLogger != null && args.Data != null)
@@ -79,6 +97,9 @@ internal abstract class BaseMongoProcess : IMongoProcess
         }
         finally
         {
+            // Stop the guardian only once the process is gone, so it keeps protecting it until the very end
+            this.Guardian?.Dispose();
+
             this.Process.Dispose();
         }
     }
