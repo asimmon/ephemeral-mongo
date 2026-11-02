@@ -20,7 +20,7 @@ jobs:
       security-events: write
 
     container:
-      image: semgrep/semgrep:1.182.1
+      image: semgrep/semgrep:1.183.0
 
     steps:
       - name: Checkout all commits and tags
