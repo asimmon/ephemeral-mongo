@@ -22,7 +22,7 @@
   <ItemGroup>
     <!-- The library is compiled against the minimum supported MongoDB.Driver version, this project runs it with the latest one like most consumers do -->
     <!-- Renovate only updates MongoDB.Driver in this project, see renovate.json -->
-    <PackageReference Include="MongoDB.Driver" VersionOverride="3.13.0" />
+    <PackageReference Include="MongoDB.Driver" VersionOverride="3.14.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="System.Memory" Condition=" '$(TargetFramework)' == 'net472' " />
     <PackageReference Include="xunit.v3" />
